@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Капсула Денежного Потока</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="container">
+    <!-- Заголовок -->
+    <header class="header">
+        <div class="header__logo">
+            <i class="fas fa-piggy-bank header__logo-icon"></i>
+            <h1 class="header__title">Капсула Денежного Потока</h1>
+        </div>
+        <nav class="header__nav">
+            <button class="nav-btn" id="goal-btn">
+                <i class="fas fa-bullseye"></i> Добавить цель
+            </button>
+            <button class="nav-btn" id="expense-btn">
+                <i class="fas fa-money-bill-wave"></i> Добавить расход
+            </button>
+        </nav>
+    </header>
+
+    <!-- Формы -->
+    <div class="form-container" id="goal-form-container">…</div>
+    <div class="form-container" id="expense-form-container">…</div>
+
+    <!-- Главный экран -->
+    <main class="main">
+        <div class="goal-progress">…</div>
+        <div class="widget">…</div>
+        <div class="piggy-bank">…</div>
+        <div class="today-expenses">…</div>
+    </main>
+</div>
+
+<div class="notification notification--info">
+    <i class="fas fa-info-circle notification__icon"></i>
+    <div class="notification-content">Вы не вносили расходы сегодня</div>
+</div>
+
+<!-- Подключение скриптов -->
+<script src="js/NotificationManager.js"></script>
+<script src="js/PiggyBank.js"></script>
+<script src="js/GoalProgress.js"></script>
+<script src="js/GoalForm.js"></script>
+<script src="js/ExpenseForm.js"></script>
+<script src="js/App.js"></script>
+</body>
+</html>
