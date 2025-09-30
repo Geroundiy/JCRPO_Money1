@@ -1,22 +1,17 @@
-export default class NotificationManager {
+export class NotificationManager {
     constructor() {
-        this.notification = document.querySelector('.notification');
+        this.container = document.getElementById('notifications-container');
     }
-    show(message, type = 'info') {
-        const content = this.notification.querySelector('.notification-content');
-        const icon = this.notification.querySelector('.notification__icon');
-        content.textContent = message;
-        this.notification.className = `notification notification--${type}`;
-        icon.className =
-            type === 'info'
-                ? 'fas fa-info-circle notification__icon'
-                : type === 'warning'
-                    ? 'fas fa-exclamation-circle notification__icon'
-                    : 'fas fa-check-circle notification__icon';
-        this.notification.classList.add('notification--show');
-        setTimeout(() => this.hide(), 3000);
-    }
-    hide() {
-        this.notification.classList.remove('notification--show');
+
+    showNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.textContent = message;
+        this.container.appendChild(notification);
+
+        // Удаляем уведомление после окончания анимации
+        setTimeout(() => {
+            notification.remove();
+        }, 4000); // Должно быть больше, чем длительность animation
     }
 }

@@ -4,51 +4,82 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Капсула Денежного Потока</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+
+<div id="piggy-bank" class="background-piggy-bank"></div>
+
 <div class="container">
-    <!-- Заголовок -->
-    <header class="header">
-        <div class="header__logo">
-            <i class="fas fa-piggy-bank header__logo-icon"></i>
-            <h1 class="header__title">Капсула Денежного Потока</h1>
+    <h1 class="title">Капсула Денежного Потока</h1>
+
+    <div class="widget main-widget">
+        <h2 id="goal-title">Накопления на...</h2>
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill"></div>
         </div>
-        <nav class="header__nav">
-            <button class="nav-btn" id="goal-btn">
-                <i class="fas fa-bullseye"></i> Добавить цель
-            </button>
-            <button class="nav-btn" id="expense-btn">
-                <i class="fas fa-money-bill-wave"></i> Добавить расход
-            </button>
-        </nav>
-    </header>
+        <p id="progress-text">0 ₽ / 0 ₽</p>
+        <p id="days-progress" class="days-progress"></p>
+    </div>
 
-    <!-- Формы -->
-    <div class="form-container" id="goal-form-container">…</div>
-    <div class="form-container" id="expense-form-container">…</div>
-
-    <!-- Главный экран -->
-    <main class="main">
-        <div class="goal-progress">…</div>
-        <div class="widget">…</div>
-        <div class="piggy-bank">…</div>
-        <div class="today-expenses">…</div>
-    </main>
+    <div class="widget expenses-widget">
+        <h2>Сегодняшние расходы</h2>
+        <ul id="expenses-list" class="expenses-list">
+        </ul>
+    </div>
 </div>
 
-<div class="notification notification--info">
-    <i class="fas fa-info-circle notification__icon"></i>
-    <div class="notification-content">Вы не вносили расходы сегодня</div>
+<div id="goal-form-container" class="form-container">
+    <form id="goal-form" class="form">
+        <h3 class="form-title">Добавить новую цель</h3>
+        <input type="text" id="goal-name-input" placeholder="Название цели" required>
+        <input type="number" id="goal-amount-input" placeholder="Сумма (₽)" required>
+        <input type="date" id="goal-date-input" required>
+        <button type="submit" class="form-submit-btn">Сохранить</button>
+        <span class="close-btn">&times;</span>
+    </form>
 </div>
 
-<!-- Подключение скриптов -->
-<script src="js/NotificationManager.js"></script>
-<script src="js/PiggyBank.js"></script>
-<script src="js/GoalProgress.js"></script>
-<script src="js/GoalForm.js"></script>
-<script src="js/ExpenseForm.js"></script>
-<script src="js/App.js"></script>
+<div id="expense-form-container" class="form-container">
+    <form id="expense-form" class="form">
+        <h3 class="form-title">Добавить расход</h3>
+        <input type="number" id="expense-amount-input" placeholder="Сумма (₽)" required>
+        <select id="expense-category-input" required>
+            <option value="" disabled selected>Выберите категорию</option>
+            <option value="food">Еда</option>
+            <option value="transport">Транспорт</option>
+            <option value="entertainment">Развлечения</option>
+            <option value="shopping">Покупки</option>
+            <option value="other">Другое</option>
+        </select>
+        <textarea id="expense-description-input" placeholder="Описание" rows="3"></textarea>
+        <button type="submit" class="form-submit-btn">Сохранить</button>
+        <span class="close-btn">&times;</span>
+    </form>
+</div>
+
+<div id="income-form-container" class="form-container">
+    <form id="income-form" class="form">
+        <h3 class="form-title">Добавить доход</h3>
+        <input type="number" id="income-amount-input" placeholder="Сумма (₽)" required>
+        <textarea id="income-description-input" placeholder="Описание (необязательно)" rows="3"></textarea>
+        <button type="submit" class="form-submit-btn">Сохранить</button>
+        <span class="close-btn">&times;</span>
+    </form>
+</div>
+
+<div class="action-buttons">
+    <button id="goal-btn" class="action-btn goal-btn">+</button>
+    <button id="expense-btn" class="action-btn expense-btn">-</button>
+    <button id="income-btn" class="action-btn income-btn">+</button>
+</div>
+
+<div id="notifications-container" class="notifications-container"></div>
+
+<script type="module" src="js/App.js"></script>
+
 </body>
 </html>
