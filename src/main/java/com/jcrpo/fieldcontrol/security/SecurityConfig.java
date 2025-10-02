@@ -12,7 +12,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
@@ -32,42 +32,37 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. Отключаем CSRF
                 .csrf(AbstractHttpConfigurer::disable)
-                // 2. Настраиваем CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // 3. УПРАВЛЕНИЕ СЕССИЯМИ: ОТКЛЮЧАЕМ СЕССИИ (Для корректной работы Basic Auth)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
-                // 4. ПРАВИЛА ДОСТУПА
                 .authorizeHttpRequests(authorize -> authorize
-                        // Пути, доступные без аутентификации
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/", "/login.html", "/register.html", "/css/**", "/js/**", "/font/**", "/images/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/api/currency/**", // <-- ДОБАВЛЕНО РАЗРЕШЕНИЕ ДЛЯ API ВАЛЮТ
+                                "/login.html",
+                                "/register.html",
+                                "/css/**",
+                                "/js/**",
+                                "/font/**", // Добавлено для фона
+                                "/assets/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
-
-                // 5. ЯВНО ВКЛЮЧАЕМ BASIC AUTH
                 .httpBasic(Customizer.withDefaults())
-
-                // 6. Отключаем Form Login
                 .formLogin(AbstractHttpConfigurer::disable)
-
-                // 7. Настраиваем выход
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login.html")
                 );
-
         return http.build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        // Using BCrypt for strong, modern password hashing
+        return new BCryptPasswordEncoder();
     }
 
     @Bean

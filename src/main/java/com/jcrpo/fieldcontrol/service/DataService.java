@@ -7,6 +7,7 @@ import com.jcrpo.fieldcontrol.repository.GoalRepository;
 import com.jcrpo.fieldcontrol.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional; // <-- НОВЫЙ ИМПОРТ
 
 import java.time.LocalDate;
 import java.util.List;
@@ -41,11 +42,12 @@ public class DataService {
         return transactionRepository.findByUser(user);
     }
 
-    public List<Transaction> getAllUserIncomes(User user) {
-        return transactionRepository.findByTypeAndUser("INCOME", user);
-    }
-
-    public List<Transaction> getAllUserExpenses(User user) {
-        return transactionRepository.findByTypeAndUser("EXPENSE", user);
+    // НОВЫЙ МЕТОД для удаления цели и всех транзакций
+    @Transactional
+    public void deleteGoalAndTransactions(User user) {
+        // Сначала удаляем все транзакции, связанные с пользователем
+        transactionRepository.deleteAllByUser(user);
+        // Затем удаляем саму цель
+        goalRepository.deleteByUser(user);
     }
 }

@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
+<!DOCTYPE html><html lang="ru"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход</title>
@@ -10,19 +8,17 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            /* ДОБАВЛЕНИЕ ПУТИ К ФОНУ */
-            background-image: url('/font/fotn_1_main.png');
+            background-image: url('/font/font_1_main.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
-
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #f0fdf4; /* Запасной цвет */
+            background-color: #f0fdf4;
         }
         .login-container {
             background-color: rgba(255, 255, 255, 0.95);
@@ -47,9 +43,7 @@
         .text-green-700 { color: #047857; }
         .bg-green-600 { background-color: #059669; }
     </style>
-</head>
-<body>
-<div class="login-container">
+</head><body><div class="login-container">
     <h1 class="text-3xl font-bold text-center text-green-700 mb-6">Денежная капсула</h1>
     <form id="loginForm" class="space-y-4">
         <div class="form-group">
@@ -71,36 +65,25 @@
             Войти
         </button>
     </form>
-    <button id="register-btn" class="w-full mt-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition duration-200">
+    <a href="register.html" class="w-full mt-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg transition duration-200 text-center block">
         Зарегистрироваться
-    </button>
+    </a>
     <p id="error-message" class="error-message text-red-500 text-sm mt-3 text-center"></p>
 </div>
-
 <script src="js/api.js"></script>
 <script>
-    // Инициализация иконок Lucide
     lucide.createIcons();
-
     const passwordField = document.getElementById('password');
     const toggleButton = document.getElementById('togglePassword');
     const toggleIcon = document.querySelector('#togglePassword i');
 
-    // --- Логика "Показать/Скрыть пароль" ---
     toggleButton.addEventListener('click', () => {
         const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordField.setAttribute('type', type);
-
-        // Смена иконки
-        if (type === 'text') {
-            toggleIcon.setAttribute('data-lucide', 'eye-off');
-        } else {
-            toggleIcon.setAttribute('data-lucide', 'eye');
-        }
+        toggleIcon.setAttribute('data-lucide', type === 'text' ? 'eye-off' : 'eye');
         lucide.createIcons();
     });
 
-    // --- Логика входа (использует api.js) ---
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('username').value;
@@ -109,9 +92,8 @@
         errorMessage.innerText = '';
 
         try {
-            const response = await login(username, password);
-
-            if (response.ok) {
+            const success = await login(username, password);
+            if (success) {
                 window.location.href = 'index.html';
             } else {
                 errorMessage.innerText = 'Неверное имя пользователя или пароль.';
@@ -120,10 +102,6 @@
             console.error('Ошибка входа:', error);
             errorMessage.innerText = 'Ошибка при попытке входа. Проверьте соединение.';
         }
-    });
-
-    document.getElementById('register-btn').addEventListener('click', () => {
-        window.location.href = 'register.html';
     });
 </script>
 </body>

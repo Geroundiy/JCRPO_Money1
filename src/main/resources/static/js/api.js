@@ -1,128 +1,96 @@
-// src/main/resources/static/js/api.js
-
 const API_BASE_URL = 'http://localhost:8080/api/data';
 const AUTH_URL = 'http://localhost:8080/api/auth';
-
-// --- ХРАНЕНИЕ УЧЕТНЫХ ДАННЫХ В СЕССИИ БРАУЗЕРА (КЛЮЧЕВОЕ ИЗМЕНЕНИЕ) ---
-// Поскольку мы отключили JSESSIONID, мы храним Basic Auth заголовок
 let globalAuthHeader = '';
 
-/**
- * Аутентифицирует пользователя и сохраняет заголовок для последующих запросов.
- * @param {string} username - Имя пользователя.
- * @param {string} password - Пароль пользователя.
- * @returns {Promise<Response>} Ответ от сервера (первая проверка).
- */
-async function login(username, password) {
+export async function login(username, password) {
     const credentials = btoa(`${username}:${password}`);
     const authHeader = `Basic ${credentials}`;
 
-    // ПРОВЕРКА: Пробуем получить защищенный ресурс, чтобы Spring Security нас аутентифицировал.
-    const response = await fetch(`${API_BASE_URL}/goal`, {
-        method: 'GET',
-        headers: {
-            'Authorization': authHeader,
-            'Content-Type': 'application/json'
-        }
+    const response = await fetch(`${API_BASE_URL}`, {
+        headers: { 'Authorization': authHeader }
     });
 
     if (response.ok) {
-        // Если аутентификация прошла успешно, сохраняем заголовок для будущих вызовов
         globalAuthHeader = authHeader;
+        const data = await response.json();
+        sessionStorage.setItem('userData', JSON.stringify(data));
+        sessionStorage.setItem('authHeader', authHeader);
+        return true;
     }
-
-    return response;
+    return false;
 }
 
-/**
- * Регистрирует пользователя.
- */
-async function register(username, password) {
-    const response = await fetch(`${AUTH_URL}/register`, {
+export async function register(username, password) {
+    return await fetch(`${AUTH_URL}/register`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
     });
-    return response;
 }
 
-/**
- * Вспомогательная функция для создания заголовков для защищенных запросов.
- */
 function getProtectedHeaders() {
+    if (!globalAuthHeader) {
+        globalAuthHeader = sessionStorage.getItem('authHeader');
+    }
+    if (!globalAuthHeader) {
+        window.location.href = 'login.html';
+        throw new Error('Not authenticated');
+    }
     return {
         'Content-Type': 'application/json',
-        // ДОБАВЛЯЕМ СОХРАНЕННЫЙ ЗАГОЛОВОК BASIC AUTH
         'Authorization': globalAuthHeader
     };
 }
 
+async function fetchAPI(endpoint = '', options = {}) {
+    try {
+        const headers = getProtectedHeaders();
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
 
-/**
- * Получает все данные пользователя: цель и транзакции.
- */
-async function getFullData() {
-    if (!globalAuthHeader) {
-        window.location.href = 'login.html';
-        return null;
+        if (response.status === 401) {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+            throw new Error('Unauthorized');
+        }
+        if (!response.ok && response.status !== 204) {
+            throw new Error(`API Error: ${response.statusText}`);
+        }
+        return response.status === 204 ? null : response.json();
+    } catch (error) {
+        console.error("API Fetch Error:", error);
+        if (error.message !== "Not authenticated") {
+            // Можно добавить уведомление об ошибке
+        }
+        throw error;
     }
-    const response = await fetch(API_BASE_URL, {
-        method: 'GET',
-        headers: getProtectedHeaders()
-    });
-
-    if (response.status === 401) {
-        window.location.href = 'login.html';
-        return null;
-    }
-    if (!response.ok) {
-        throw new Error(`Ошибка сети или сервера: ${response.status}`);
-    }
-    return response.json();
 }
 
-/**
- * Сохраняет новую цель.
- */
-async function saveGoal(goal) {
-    if (!globalAuthHeader) {
-        window.location.href = 'login.html';
-        return null;
-    }
-    const response = await fetch(`${API_BASE_URL}/goal`, {
+export async function getFullData() {
+    return fetchAPI();
+}
+
+export async function saveGoal(goal) {
+    return fetchAPI('/goal', {
         method: 'POST',
-        headers: getProtectedHeaders(),
         body: JSON.stringify(goal)
     });
-
-    if (response.status === 401) {
-        window.location.href = 'login.html';
-        return null;
-    }
-
-    return response.json();
 }
 
-/**
- * Сохраняет новую транзакцию.
- */
-async function saveTransaction(transaction) {
-    if (!globalAuthHeader) {
-        window.location.href = 'login.html';
-        return null;
-    }
-    const response = await fetch(`${API_BASE_URL}/transaction`, {
+export async function saveTransaction(transaction) {
+    return fetchAPI('/transaction', {
         method: 'POST',
-        headers: getProtectedHeaders(),
         body: JSON.stringify(transaction)
     });
+}
 
-    if (response.status === 401) {
-        window.location.href = 'login.html';
-        return null;
-    }
+export async function deleteGoal() {
+    return fetchAPI('/goal', {
+        method: 'DELETE'
+    });
+}
 
-    return response.json();
+export function logout() {
+    sessionStorage.clear();
+    globalAuthHeader = '';
+    window.location.href = 'login.html';
 }

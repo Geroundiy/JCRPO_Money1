@@ -10,9 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException; // Добавляем импорт
-
+import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
+import java.time.LocalDateTime; // <-- Импортируем LocalDateTime
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,46 +34,32 @@ public class DataController {
         return ResponseEntity.ok(userData);
     }
 
-    @GetMapping("/goal")
-    public ResponseEntity<Goal> getUserGoal(Authentication authentication) {
-        User user = getUserFromAuthentication(authentication);
-        return dataService.getGoal(user)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
     @PostMapping("/goal")
     public ResponseEntity<Goal> saveGoal(@RequestBody Goal goal, Authentication authentication) {
         User user = getUserFromAuthentication(authentication);
         return ResponseEntity.ok(dataService.saveGoal(goal, user));
     }
 
-    @GetMapping("/transactions/today")
-    public ResponseEntity<List<Transaction>> getTodayTransactions(Authentication authentication) {
+    // НОВЫЙ МЕТОД для удаления цели
+    @DeleteMapping("/goal")
+    public ResponseEntity<Void> deleteGoal(Authentication authentication) {
         User user = getUserFromAuthentication(authentication);
-        return ResponseEntity.ok(dataService.getTodayExpenses(user));
+        dataService.deleteGoalAndTransactions(user); // Теперь этот метод существует
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/transaction")
     public ResponseEntity<Transaction> saveTransaction(@RequestBody Transaction transaction, Authentication authentication) {
         User user = getUserFromAuthentication(authentication);
         transaction.setDate(LocalDate.now());
+        transaction.setTimestamp(LocalDateTime.now()); // Теперь этот метод существует
         return ResponseEntity.ok(dataService.saveTransaction(transaction, user));
     }
 
-    /**
-     * Измененный метод для безопасного извлечения пользователя из контекста Spring Security.
-     * Возвращает 401, если аутентификация не прошла.
-     */
     private User getUserFromAuthentication(Authentication authentication) {
-        // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: ПРОВЕРКА НА NULL ---
         if (authentication == null || !authentication.isAuthenticated()) {
-            // Выбрасываем исключение, которое Spring обработает как 401 Unauthorized
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated.");
         }
-
-        // --- ОБРАЩЕНИЕ К РЕПОЗИТОРИЮ ---
-        // Теперь, когда мы уверены, что authentication не null, можно безопасно вызвать getName().
         return userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Authenticated user not found in database."));
     }

@@ -3,50 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Капсула Денежного Потока</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <title>Денежная капсула</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div id="piggy-bank" class="background-piggy-bank"></div>
+<div class="piggy-bank-container">
+    <div class="piggy-bank-outline"></div>
+    <div id="piggy-bank-fill" class="piggy-bank-fill"></div>
+</div>
 
 <div class="container">
-    <h1 class="title">Капсула Денежного Потока</h1>
+    <header class="header">
+        <h1 class="title">Денежная капсула</h1>
+        <button id="logout-btn" class="logout-btn">Выйти</button>
+    </header>
 
     <div class="widget main-widget">
         <h2 id="goal-title">Накопления на...</h2>
         <div class="progress-bar">
             <div id="progress-fill" class="progress-fill"></div>
         </div>
-        <p id="progress-text">0 ₽ / 0 ₽</p>
-        <p id="days-progress" class="days-progress"></p>
+        <p id="progress-text">0 / 0</p>
+        <p id="progress-percentage" class="progress-percentage"></p>
     </div>
 
-    <div class="widget expenses-widget">
+    <div id="expenses-widget" class="widget transactions-widget">
         <h2>Сегодняшние расходы</h2>
-        <ul id="expenses-list" class="expenses-list">
-        </ul>
+        <ul id="expenses-list" class="transaction-list"></ul>
+    </div>
+    <div id="incomes-widget" class="widget transactions-widget">
+        <h2>История доходов</h2>
+        <ul id="incomes-list" class="transaction-list"></ul>
+    </div>
+
+    <div class="widget currency-widget">
+        <h2>Курсы валют Беларусбанка</h2>
+        <table id="currency-table">
+            <thead>
+            <tr>
+                <th>Валюта</th>
+                <th>Продать (Банк покупает)</th>
+                <th>Купить (Банк продает)</th>
+            </tr>
+            </thead>
+            <tbody id="currency-table-body">
+            <tr><td colspan="3">Загрузка...</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
 <div id="goal-form-container" class="form-container">
     <form id="goal-form" class="form">
-        <h3 class="form-title">Добавить новую цель</h3>
+        <h3 class="form-title">Настройка цели</h3>
+        <input type="number" min="0.01" step="0.01" id="goal-amount-input" placeholder="Сумма" required>
         <input type="text" id="goal-name-input" placeholder="Название цели" required>
-        <input type="number" id="goal-amount-input" placeholder="Сумма (₽)" required>
+        <select id="goal-currency-input" required>
+            <option value="BYN">BYN (Br)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="RUB">RUB (₽)</option>
+        </select>
         <input type="date" id="goal-date-input" required>
         <button type="submit" class="form-submit-btn">Сохранить</button>
         <span class="close-btn">&times;</span>
     </form>
 </div>
-
 <div id="expense-form-container" class="form-container">
     <form id="expense-form" class="form">
         <h3 class="form-title">Добавить расход</h3>
-        <input type="number" id="expense-amount-input" placeholder="Сумма (₽)" required>
+        <input type="number" min="0.01" step="0.01" id="expense-amount-input" placeholder="Сумма" required>
         <select id="expense-category-input" required>
             <option value="" disabled selected>Выберите категорию</option>
             <option value="food">Еда</option>
@@ -60,26 +88,53 @@
         <span class="close-btn">&times;</span>
     </form>
 </div>
-
 <div id="income-form-container" class="form-container">
     <form id="income-form" class="form">
         <h3 class="form-title">Добавить доход</h3>
-        <input type="number" id="income-amount-input" placeholder="Сумма (₽)" required>
+        <input type="number" min="0.01" step="0.01" id="income-amount-input" placeholder="Сумма" required>
         <textarea id="income-description-input" placeholder="Описание (необязательно)" rows="3"></textarea>
         <button type="submit" class="form-submit-btn">Сохранить</button>
         <span class="close-btn">&times;</span>
     </form>
 </div>
+<div id="converter-form-container" class="form-container">
+    <form id="converter-form" class="form">
+        <h3 class="form-title">Конвертер валют</h3>
+        <div class="converter-row">
+            <input type="number" id="converter-amount-1" placeholder="1.00" min="0" step="any">
+            <select id="converter-currency-1"></select>
+        </div>
+        <div class="converter-equals">=</div>
+        <div class="converter-row">
+            <input type="number" id="converter-amount-2" placeholder="Результат" readonly>
+            <select id="converter-currency-2"></select>
+        </div>
+        <span class="close-btn">&times;</span>
+    </form>
+</div>
+<div id="confirmation-modal" class="modal-container">
+    <div class="modal-content">
+        <p id="modal-text">Вы уверены?</p>
+        <div class="modal-buttons">
+            <button id="modal-confirm-btn" class="modal-btn confirm">Да</button>
+            <button id="modal-cancel-btn" class="modal-btn cancel">Нет</button>
+        </div>
+    </div>
+</div>
 
-<div class="action-buttons">
-    <button id="goal-btn" class="action-btn goal-btn">+</button>
-    <button id="expense-btn" class="action-btn expense-btn">-</button>
-    <button id="income-btn" class="action-btn income-btn">+</button>
+<div class="action-buttons-container">
+    <div class="action-menu" id="action-menu">
+        <button id="converter-btn" class="action-btn converter-btn" title="Конвертер валют">💱</button>
+        <button id="delete-goal-btn" class="action-btn delete-btn" title="Очистить цель">❌</button>
+        <button id="income-btn" class="action-btn income-btn" title="Добавить доход">+</button>
+        <button id="expense-btn" class="action-btn expense-btn" title="Добавить расход">-</button>
+        <button id="goal-btn" class="action-btn goal-btn" title="Настроить цель">🎯</button>
+    </div>
+    <button id="main-action-btn" class="action-btn main-btn">+</button>
 </div>
 
 <div id="notifications-container" class="notifications-container"></div>
-
 <script type="module" src="js/App.js"></script>
-
+<script src="js/api.js"></script>
 </body>
 </html>

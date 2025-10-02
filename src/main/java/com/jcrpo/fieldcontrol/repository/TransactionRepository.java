@@ -7,7 +7,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+
     List<Transaction> findByUser(User user);
     List<Transaction> findByUserAndDate(User user, LocalDate date);
     List<Transaction> findByTypeAndUser(String type, User user);
+
+    void deleteAllByUser(User user);
 }

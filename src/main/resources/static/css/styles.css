@@ -1,65 +1,140 @@
-/* Общие стили */
+/* General styles */
 body {
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Inter', sans-serif;
     background-color: #f0f2f5;
     color: #333;
     margin: 0;
-    padding: 0;
+    padding: 20px;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     min-height: 100vh;
     overflow: hidden;
     position: relative;
+    background-image: url('/font/font_1_main.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
 }
 
-/* Виртуальная копилка на фоне */
-#piggy-bank {
-    position: absolute;
-    bottom: -150px;
+/* --- PIGGY BANK STYLES --- */
+.piggy-bank-container {
+    position: fixed;
+    bottom: -50px;
     left: 50%;
     transform: translateX(-50%);
-    width: 300px;
-    height: 300px;
-    background-image: url('https://i.ibb.co/L5Q7z7Q/piggy-bank-placeholder.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    z-index: -1;
-    opacity: 0.1;
-    transition: all 0.5s ease;
+    width: 350px;
+    height: 350px;
+    z-index: 0;
+    filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+}
+#fill-rect {
+    transition: y 1.2s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+#piggy-outline-path {
+    fill-rule: evenodd;
+}
+/* --- CURRENCY TABLE STYLES --- */
+#currency-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+#currency-table th, #currency-table td {
+    padding: 10px 8px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+#currency-table thead {
+    color: #555;
+    font-size: 0.9em;
+    font-weight: 700;
+}
+#currency-table tbody td:first-child {
+    font-weight: bold;
+    text-align: left;
+}
+#currency-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.piggy-bank-outline, .piggy-bank-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+}
+
+.piggy-bank-outline {
+    background-image: url('https://i.imgur.com/g18Pj4s.png');
+    z-index: 2;
+}
+
+.piggy-bank-fill {
+    background-image: url('https://i.imgur.com/W20n1sS.png');
+    z-index: 1;
+    clip-path: inset(100% 0 0 0);
+    transition: clip-path 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* General Container */
 .container {
-    width: 90%;
-    max-width: 600px;
-    padding: 20px;
-    background-color: #fff;
+    width: 100%;
+    max-width: 500px;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     text-align: center;
     position: relative;
     z-index: 10;
+    padding: 25px;
+    box-sizing: border-box;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 .title {
-    font-size: 2em;
+    font-size: 1.8em;
     font-weight: 700;
-    color: #4CAF50;
-    margin-bottom: 20px;
+    color: #2d3748;
+    margin: 0;
 }
 
+.logout-btn {
+    background: #e2e8f0;
+    color: #4a5568;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+.logout-btn:hover { background: #cbd5e0; }
+
+/* Widgets */
 .widget {
-    background-color: #f9f9f9;
+    background-color: rgba(255, 255, 255, 0.7);
     padding: 20px;
     border-radius: 15px;
     margin-bottom: 20px;
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .main-widget h2 {
     color: #333;
     font-weight: 400;
+    margin-top: 0;
 }
 
 .progress-bar {
@@ -67,229 +142,161 @@ body {
     height: 15px;
     background-color: #e0e0e0;
     border-radius: 10px;
-    margin: 10px 0;
+    margin: 15px 0 5px 0;
     overflow: hidden;
 }
 
 .progress-fill {
     height: 100%;
     width: 0%;
-    background-color: #4CAF50;
+    background: linear-gradient(90deg, #4CAF50, #81C784);
     border-radius: 10px;
-    transition: width 0.5s ease-in-out;
+    transition: width 0.7s ease-in-out;
 }
 
-.days-progress {
-    font-size: 0.9em;
-    color: #888;
+.progress-percentage {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #047857;
+    margin-top: 8px;
 }
 
-.expenses-list {
+/* Transaction Lists */
+.transaction-list {
     list-style: none;
     padding: 0;
     text-align: left;
+    max-height: 180px;
+    overflow-y: auto;
 }
 
-.expenses-list li {
-    padding: 10px 0;
+.transaction-list li {
+    padding: 12px 10px;
+    border-bottom: 1px solid #eee;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px 15px;
+    align-items: center;
+}
+.transaction-list li:last-child { border-bottom: none; }
+
+.transaction-list .date {
+    font-size: 0.8em;
+    color: #777;
+    grid-column: 1 / -1;
+    text-align: right;
+}
+
+/* --- CURRENCY TABLE STYLES --- */
+#currency-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+#currency-table th, #currency-table td {
+    padding: 10px 8px;
+    text-align: center;
     border-bottom: 1px solid #eee;
 }
-
-.expenses-list li:last-child {
+#currency-table thead {
+    color: #555;
+    font-size: 0.9em;
+    font-weight: 700;
+}
+#currency-table tbody td:first-child {
+    font-weight: bold;
+    text-align: left;
+}
+#currency-table tbody tr:last-child td {
     border-bottom: none;
 }
 
-/* Кнопки действий */
-.action-buttons {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 20px;
-    z-index: 20;
+/* Action Buttons */
+.action-buttons-container {
+    position: fixed; bottom: 30px; right: 30px; z-index: 100;
 }
-
+.action-menu {
+    display: flex; flex-direction: column; align-items: center; gap: 15px;
+    margin-bottom: 15px; transition: all 0.3s ease-in-out;
+    transform: scale(0) translateY(50px); transform-origin: bottom center;
+    opacity: 0; pointer-events: none;
+}
+.action-buttons-container.active .action-menu {
+    transform: scale(1) translateY(0); opacity: 1; pointer-events: auto;
+}
 .action-btn {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: none;
-    color: white;
-    font-size: 2.5em;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s ease, background-color 0.2s ease;
+    width: 56px; height: 56px; border-radius: 50%; border: none; color: white;
+    font-size: 1.8em; display: flex; justify-content: center; align-items: center;
+    cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); transition: all 0.2s ease;
 }
+.action-btn:hover { transform: scale(1.1); }
+.main-btn { background-color: #4CAF50; }
+.action-buttons-container.active .main-btn { transform: rotate(135deg); }
+.goal-btn { background-color: #2196F3; }
+.expense-btn { background-color: #f44336; }
+.income-btn { background-color: #ff9800; }
+.delete-btn { background-color: #795548; font-size: 1.5em; }
+.converter-btn { background-color: #009688; font-size: 1.5em; }
 
-.action-btn:hover {
-    transform: scale(1.1);
+/* Forms & Modal */
+.form-container, .modal-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); display: flex; justify-content: center;
+    align-items: center; z-index: 110; opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s 0.3s;
 }
-
-.goal-btn {
-    background-color: #4CAF50;
+.form-container.active, .modal-container.active { opacity: 1; visibility: visible; transition-delay: 0s; }
+.form, .modal-content {
+    background: #fff; padding: 30px; border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15); display: flex;
+    flex-direction: column; gap: 15px; position: relative;
+    width: 90%; max-width: 400px;
 }
-
-.expense-btn {
-    background-color: #e74c3c;
+.form-title { margin-top: 0; color: #4CAF50; }
+.form input, .form select, .form textarea {
+    width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px;
+    box-sizing: border-box; font-size: 1em;
 }
-
-.income-btn {
-    background-color: #3498db;
-}
-
-/* Стили для форм (раскрытие) */
-.form-container {
-    position: fixed;
-    bottom: 90px;
-    left: 50%;
-    transform: translateX(-50%) scale(0.8);
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.5s ease-in-out;
-    z-index: 15;
-    width: 90%;
-    max-width: 400px;
-}
-
-.form-container.active {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) scale(1);
-}
-
-.form {
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 15px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    position: relative;
-}
-
-.form-title {
-    margin-top: 0;
-    color: #4CAF50;
-}
-
-.form input,
-.form select,
-.form textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-sizing: border-box;
-    font-size: 1em;
-}
-
 .form-submit-btn {
-    padding: 12px;
-    border: none;
-    background-color: #4CAF50;
-    color: white;
-    font-size: 1.1em;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+    padding: 12px; border: none; background-color: #4CAF50; color: white;
+    font-size: 1.1em; border-radius: 8px; cursor: pointer; transition: background-color 0.2s;
 }
-
-.form-submit-btn:hover {
-    background-color: #45a049;
-}
-
+.form-submit-btn:hover { background-color: #45a049; }
 .close-btn {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 1.5em;
-    color: #aaa;
-    cursor: pointer;
+    position: absolute; top: 10px; right: 15px; font-size: 1.8em;
+    color: #aaa; cursor: pointer; line-height: 1;
 }
 
-/* Уведомления */
+/* Converter Styles */
+.converter-row { display: flex; gap: 10px; align-items: center; }
+.converter-row select { flex-basis: 120px; flex-shrink: 0; }
+.converter-row input { flex-grow: 1; }
+.converter-equals { font-size: 2em; font-weight: bold; color: #777; margin: 5px 0; }
+
+/* Modal Styles */
+.modal-content { max-width: 350px; text-align: center; }
+.modal-content p { font-size: 1.1em; margin: 0 0 20px 0; }
+.modal-buttons { display: flex; justify-content: center; gap: 15px; }
+.modal-btn {
+    padding: 10px 25px; border: none; border-radius: 8px; font-size: 1em;
+    cursor: pointer; transition: background-color 0.2s;
+}
+.modal-btn.confirm { background-color: #f44336; color: white; }
+.modal-btn.confirm:hover { background-color: #d32f2f; }
+.modal-btn.cancel { background-color: #e0e0e0; color: #333; }
+.modal-btn.cancel:hover { background-color: #bdbdbd; }
+
+/* Notifications */
 .notifications-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 100;
+    position: fixed; top: 20px; right: 20px; z-index: 200;
 }
-
 .notification {
-    background-color: #333;
-    color: #fff;
-    padding: 15px 25px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    opacity: 0;
-    transform: translateX(100%);
-    animation: fadeInOut 4s ease forwards;
+    background-color: #333; color: #fff; padding: 15px 25px;
+    border-radius: 10px; margin-bottom: 10px; opacity: 0;
+    transform: translateX(100%); animation: fadeInOut 4s ease forwards;
 }
-
-/* ===================================== */
-/* НОВЫЕ СТИЛИ ДЛЯ ЛОГИНА И РЕГИСТРАЦИИ */
-/* ===================================== */
-
-.login-body {
-    background-image: url('/font/font_1_main.png'); /* Путь должен быть от корня static */
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-}
-
-.login-container {
-    max-width: 400px;
-    padding: 40px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    box-sizing: border-box;
-}
-
-.login-container h1 {
-    font-family: 'Newsreader', serif;
-    font-size: 2.5rem;
-    text-align: center;
-    margin-bottom: 20px;
-    color: #333;
-}
-
-.login-container input[type="text"],
-.login-container input[type="password"] {
-    padding: 18px;
-    font-size: 1.2rem;
-}
-
-.login-btn {
-    width: 100%;
-    padding: 15px;
-    font-size: 1.2rem;
-    background-color: #B9F73E;
-    color: black;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'Newsreader', serif;
-}
-
-.register-btn {
-    background-color: #f0f2f5;
-    color: #333;
-    width: 100%;
-    padding: 15px;
-    font-size: 1.2rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'Newsreader', serif;
-    margin-top: 10px;
-}
+.notification.error { background-color: #d32f2f; }
+.notification.success { background-color: #4CAF50; }
 
 @keyframes fadeInOut {
     0% { opacity: 0; transform: translateX(100%); }
