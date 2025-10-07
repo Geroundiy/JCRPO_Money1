@@ -17,22 +17,37 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final UserRepository userRepository;
-    // Injected PasswordEncoder to hash passwords
     private final PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegistrationRequest request) {
-        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            return ResponseEntity.badRequest().body("Username is already taken!");
+        try {
+            // Валидация входных данных
+            if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Username cannot be empty");
+            }
+
+            if (request.getPassword() == null || request.getPassword().length() < 4) {
+                return ResponseEntity.badRequest().body("Password must be at least 4 characters long");
+            }
+
+            // Проверка существования пользователя
+            if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+                return ResponseEntity.badRequest().body("Username is already taken!");
+            }
+
+            // Создание и сохранение пользователя
+            User user = new User();
+            user.setUsername(request.getUsername().trim());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+            userRepository.save(user);
+
+            return ResponseEntity.ok("User registered successfully!");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Registration failed: " + e.getMessage());
         }
-
-        User user = new User();
-        user.setUsername(request.getUsername());
-        // Hashing the password before saving
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        userRepository.save(user);
-
-        return ResponseEntity.ok("User registered successfully!");
     }
 
     @Data

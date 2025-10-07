@@ -35,33 +35,43 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionCreationPolicy(SessionCreationPolicy.ALWAYS) // Изменено на ALWAYS
                 )
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/api/auth/**",
-                                "/api/currency/**", // <-- ДОБАВЛЕНО РАЗРЕШЕНИЕ ДЛЯ API ВАЛЮТ
+                                "/api/currency/**",
                                 "/login.html",
                                 "/register.html",
                                 "/css/**",
                                 "/js/**",
-                                "/font/**", // Добавлено для фона
-                                "/assets/**"
+                                "/font/**",
+                                "/assets/**",
+                                "/index.html", // Добавлено
+                                "/" // Добавлено
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults())
-                .formLogin(AbstractHttpConfigurer::disable)
+                .formLogin(form -> form // Включена форма логина
+                        .loginPage("/login.html")
+                        .loginProcessingUrl("/api/auth/login")
+                        .defaultSuccessUrl("/index.html", true)
+                        .failureUrl("/login.html?error=true")
+                        .permitAll()
+                )
                 .logout(logout -> logout
-                        .logoutUrl("/logout")
+                        .logoutUrl("/api/auth/logout")
                         .logoutSuccessUrl("/login.html")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .permitAll()
                 );
         return http.build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // Using BCrypt for strong, modern password hashing
         return new BCryptPasswordEncoder();
     }
 
