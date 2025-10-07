@@ -1,4 +1,5 @@
 /* General styles */
+* { box-sizing: border-box; }
 body {
     font-family: 'Inter', sans-serif;
     background-color: #f0f2f5;
@@ -7,7 +8,7 @@ body {
     padding: 20px;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Changed to allow scrolling from the top */
+    align-items: flex-start; /* allow scrolling from the top */
     min-height: 100vh;
     overflow-x: hidden;      /* Prevent horizontal scroll */
     overflow-y: auto;        /* Allow vertical scroll */
@@ -16,6 +17,77 @@ body {
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ---- DARK MODE TOGGLE ---- */
+.darkmode-wrapper { position: fixed; top: 20px; right: 20px; z-index: 400; display:flex; align-items:center; gap:8px; }
+#darkmode-toggle { width: 0; height: 0; visibility: hidden; }
+
+/* label look (converted from your initial scss) */
+.darkmode-label {
+    width: 58px;
+    height: 34px;
+    display: inline-block;
+    border-radius: 34px;
+    background: linear-gradient(180deg,#ebebeb,#d6d6d6);
+    box-shadow: inset 0px 5px 15px rgba(0,0,0,0.12), inset 0px -5px 15px rgba(255,255,255,0.4);
+    cursor: pointer;
+    transition: all .3s ease;
+    position: relative;
+    padding: 6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.darkmode-label:after {
+    content: "";
+    width: 26px;
+    height: 26px;
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: linear-gradient(180deg,#ffcc89,#d8860b);
+    border-radius: 50%;
+    box-shadow: 0px 5px 10px rgba(0,0,0,0.2);
+    transition: all .3s ease;
+}
+
+/* svg icons inside toggle */
+.darkmode-label svg { position: relative; width: 20px; height: 20px; z-index: 10; pointer-events: none; }
+.darkmode-label svg.sun { left: -6px; fill: #fff; transition: fill .3s ease; }
+.darkmode-label svg.moon { left: 6px; fill: #7e7e7e; transition: fill .3s ease; }
+
+/* when checked — dark label state */
+#darkmode-toggle:checked + .darkmode-label {
+    background: #242424;
+}
+#darkmode-toggle:checked + .darkmode-label:after {
+    left: calc(100% - 30px);
+    background: linear-gradient(180deg,#777,#3a3a3a);
+}
+#darkmode-toggle:checked + .darkmode-label svg.sun { fill: #7e7e7e; }
+#darkmode-toggle:checked + .darkmode-label svg.moon { fill: #fff; }
+
+/* ---- Video background for dark mode ---- */
+.dark-video {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2; /* behind piggy and main UI */
+    opacity: 0;
+    transition: opacity 0.45s ease, filter 0.45s ease;
+    pointer-events: none;
+    filter: brightness(0.6) saturate(0.9);
+}
+
+/* If checkbox is checked - reveal video (input and video are siblings inside .darkmode-wrapper) */
+/* Also reveal when body.dark-theme class is present to support both toggling methods */
+#darkmode-toggle:checked ~ .dark-video,
+body.dark-theme .dark-video {
+    opacity: 1;
 }
 
 /* --- SVG PIGGY BANK STYLES --- */
@@ -26,8 +98,9 @@ body {
     transform: translateY(-50%); /* Adjust for vertical centering */
     width: 350px; /* Increased size */
     height: 350px;
-    z-index: 0;
+    z-index: 5; /* above video but below main container */
     filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 #fill-rect {
@@ -53,6 +126,7 @@ body {
     box-sizing: border-box;
     margin-left: 320px; /* Add margin to avoid overlap with piggy bank */
     margin-bottom: 50px;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .header {
@@ -87,6 +161,7 @@ body {
     padding: 20px;
     border-radius: 15px;
     margin-bottom: 20px;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .main-widget h2 {
@@ -187,8 +262,8 @@ body {
     font-size: 1.8em; display: flex; justify-content: center; align-items: center;
     cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); transition: all 0.2s ease;
 }
-.action-btn:hover { transform: scale(1.1); }
-.main-btn { background-color: #4CAF50; }
+.action-btn:hover { transform: scale(1.06); }
+.main-btn { background-color: #4CAF50; transition: transform 0.25s ease; }
 .action-buttons-container.active .main-btn { transform: rotate(135deg); }
 .goal-btn { background-color: #2196F3; }
 .expense-btn { background-color: #f44336; }
@@ -261,4 +336,84 @@ body {
     10% { opacity: 1; transform: translateX(0); }
     90% { opacity: 1; transform: translateX(0); }
     100% { opacity: 0; transform: translateX(100%); }
+}
+
+/* ------------------ DARK THEME OVERRIDES ------------------ */
+body.dark-theme {
+    background-color: #070708;
+    color: #e6eef3;
+}
+
+/* container and widgets darker */
+body.dark-theme .container {
+    background-color: rgba(20, 20, 20, 0.65);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    color: #e6eef3;
+}
+body.dark-theme .widget {
+    background-color: rgba(18, 18, 18, 0.6);
+    color: #e6eef3;
+}
+
+/* piggy slightly dim in dark theme */
+body.dark-theme .piggy-bank-container {
+    filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6)) saturate(0.9) brightness(0.95);
+}
+
+/* progress and accents */
+body.dark-theme .progress-bar { background-color: rgba(255,255,255,0.06); }
+body.dark-theme .progress-fill { background: linear-gradient(90deg,#66bb6a,#4caf50); }
+body.dark-theme .progress-percentage { color: #8ae79c; }
+
+/* headers and text */
+body.dark-theme .title, body.dark-theme h2 { color: #dfefff; }
+body.dark-theme .logout-btn {
+    background: #2b2b2b; color: #ddd;
+}
+body.dark-theme .logout-btn:hover { background: #383838; }
+
+/* table */
+body.dark-theme #currency-table thead { color: #cfdff0; }
+body.dark-theme #currency-table th, body.dark-theme #currency-table td {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: #e6eef3;
+}
+body.dark-theme #currency-table tbody td:first-child { color: #f0f9ff; }
+
+/* action buttons (make softer in dark) */
+body.dark-theme .action-btn { box-shadow: 0 6px 18px rgba(0,0,0,0.6); }
+body.dark-theme .main-btn { background-color: #2f8e4d; }
+
+/* forms & modals in dark */
+body.dark-theme .form, body.dark-theme .modal-content {
+    background: #121212; color: #e6eef3;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+}
+body.dark-theme .form input, body.dark-theme .form select, body.dark-theme .form textarea {
+    background: #0f0f0f; border: 1px solid rgba(255,255,255,0.06); color: #e6eef3;
+}
+body.dark-theme .form-submit-btn { background: #3a8a4a; }
+body.dark-theme .form-submit-btn:hover { background: #34753f; }
+
+/* notifications in dark theme */
+body.dark-theme .notification { background-color: rgba(255,255,255,0.06); color: #fff; }
+body.dark-theme .notification.success { background-color: #2e7d32; }
+body.dark-theme .notification.error { background-color: #b71c1c; }
+
+/* ensure UI always above video, piggy above video */
+.dark-video { z-index: -2; }
+.piggy-bank-container { z-index: 5; }
+.container { z-index: 10; }
+
+/* ------------------ RESPONSIVE ADJUSTMENTS ------------------ */
+@media (max-width: 900px) {
+    .piggy-bank-container { display: none; } /* hide piggy on small screens to save space */
+    .container { margin-left: 16px; margin-right: 16px; max-width: calc(100% - 32px); }
+    .darkmode-wrapper { right: 12px; top: 12px; }
+}
+
+@media (max-width: 420px) {
+    .action-buttons-container { right: 12px; bottom: 16px; }
+    .action-btn { width: 48px; height: 48px; font-size: 1.4em; }
+    .title { font-size: 1.4em; }
 }

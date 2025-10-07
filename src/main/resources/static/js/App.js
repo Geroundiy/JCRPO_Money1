@@ -1,3 +1,4 @@
+// src/main/resources/static/js/App.js
 import { getFullData, saveGoal, saveTransaction, deleteGoal, logout } from './api.js';
 
 class App {
@@ -5,7 +6,7 @@ class App {
         this.currentGoal = null;
         this.currentTransactions = [];
         this.currencySymbols = { BYN: 'Br', USD: '$', EUR: '€', RUB: '₽', CNY: '¥' };
-        this.exchangeRates = {};
+        this.exchangeRates = {}; // format: { "USD": { buy: Number, sell: Number }, ... }
 
         this.cacheDOMElements();
         this.bindGlobalEvents();
@@ -17,7 +18,9 @@ class App {
         this.progressFillEl = document.getElementById('progress-fill');
         this.progressTextEl = document.getElementById('progress-text');
         this.progressPercentageEl = document.getElementById('progress-percentage');
-        this.piggyBankFillEl = document.getElementById('piggy-bank-fill');
+        // support both possible ids for piggy fill
+        this.piggyBankFillEl = document.getElementById('piggy-bank-fill') || document.getElementById('fill-rect') || null;
+
         this.expensesListEl = document.getElementById('expenses-list');
         this.incomesListEl = document.getElementById('incomes-list');
         this.currencyTableBody = document.getElementById('currency-table-body');
@@ -33,35 +36,52 @@ class App {
     }
 
     bindGlobalEvents() {
-        document.getElementById('logout-btn').addEventListener('click', logout);
-        this.mainActionBtn.addEventListener('click', () => this.actionButtonsContainer.classList.toggle('active'));
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) logoutBtn.addEventListener('click', logout);
 
-        document.getElementById('income-btn').addEventListener('click', () => this.openFormWithGoalCheck('income-form-container'));
-        document.getElementById('expense-btn').addEventListener('click', () => this.openFormWithGoalCheck('expense-form-container'));
-        document.getElementById('goal-btn').addEventListener('click', () => this.openForm('goal-form-container'));
-        document.getElementById('delete-goal-btn').addEventListener('click', () => this.showDeleteConfirmation());
-        document.getElementById('converter-btn').addEventListener('click', () => this.openForm('converter-form-container'));
+        if (this.mainActionBtn && this.actionButtonsContainer) {
+            this.mainActionBtn.addEventListener('click', () => this.actionButtonsContainer.classList.toggle('active'));
+        }
+
+        const incomeBtn = document.getElementById('income-btn');
+        const expenseBtn = document.getElementById('expense-btn');
+        const goalBtn = document.getElementById('goal-btn');
+        const deleteGoalBtn = document.getElementById('delete-goal-btn');
+        const converterBtn = document.getElementById('converter-btn');
+
+        if (incomeBtn) incomeBtn.addEventListener('click', () => this.openFormWithGoalCheck('income-form-container'));
+        if (expenseBtn) expenseBtn.addEventListener('click', () => this.openFormWithGoalCheck('expense-form-container'));
+        if (goalBtn) goalBtn.addEventListener('click', () => this.openForm('goal-form-container'));
+        if (deleteGoalBtn) deleteGoalBtn.addEventListener('click', () => this.showDeleteConfirmation());
+        if (converterBtn) converterBtn.addEventListener('click', () => this.openForm('converter-form-container'));
 
         this.setupForm('goal-form-container', this.handleGoalSubmit);
         this.setupForm('expense-form-container', this.handleExpenseSubmit);
         this.setupForm('income-form-container', this.handleIncomeSubmit);
-        this.setupForm('converter-form-container', () => {});
+        this.setupForm('converter-form-container', () => {}); // converter handled inline
 
-        this.modalCancelBtn.addEventListener('click', () => this.confirmationModal.classList.remove('active'));
+        if (this.modalCancelBtn) {
+            this.modalCancelBtn.addEventListener('click', () => {
+                if (this.confirmationModal) this.confirmationModal.classList.remove('active');
+            });
+        }
 
-        this.converterAmount1.addEventListener('input', () => this.handleConversion());
-        this.converterCurrency1.addEventListener('change', () => this.handleConversion());
-        this.converterCurrency2.addEventListener('change', () => this.handleConversion());
+        if (this.converterAmount1) this.converterAmount1.addEventListener('input', () => this.handleConversion());
+        if (this.converterCurrency1) this.converterCurrency1.addEventListener('change', () => this.handleConversion());
+        if (this.converterCurrency2) this.converterCurrency2.addEventListener('change', () => this.handleConversion());
     }
 
     setupForm(containerId, submitHandler) {
         const container = document.getElementById(containerId);
-        container.querySelector('.close-btn').addEventListener('click', () => container.classList.remove('active'));
+        if (!container) return;
+        const closeBtn = container.querySelector('.close-btn');
+        if (closeBtn) closeBtn.addEventListener('click', () => container.classList.remove('active'));
         const form = container.querySelector('form');
         if (form) {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                submitHandler.call(this, form); // ИСПРАВЛЕНО: передаем сам элемент формы
+                // call submit handler with `this` context and pass form element
+                submitHandler.call(this, form);
             });
         }
     }
@@ -69,47 +89,75 @@ class App {
     async loadInitialData() {
         try {
             const storedData = sessionStorage.getItem('userData');
-            let data = storedData ? JSON.parse(storedData) : await getFullData();
-            if (storedData) sessionStorage.removeItem('userData');
+            let data = null;
+            if (storedData) {
+                data = JSON.parse(storedData);
+                sessionStorage.removeItem('userData');
+            } else {
+                data = await getFullData();
+            }
 
             if (data) {
-                this.currentGoal = data.goal;
+                this.currentGoal = data.goal || null;
                 this.currentTransactions = data.transactions || [];
                 this.updateUI();
             }
         } catch (error) {
             console.error('Error loading data:', error);
+            this.showNotification('Ошибка загрузки данных.', 'error');
         }
-        this.fetchCurrencyRates();
+
+        // fetch currency rates regardless
+        this.fetchCurrencyRates().catch(() => {
+            this.showNotification('Не удалось загрузить курсы валют', 'error');
+        });
     }
 
     updateUI() {
+        if (!this.goalTitleEl || !this.progressTextEl || !this.progressPercentageEl || !this.progressFillEl) {
+            // if some essential elements missing — bail out
+            return;
+        }
+
         if (!this.currentGoal) {
             this.goalTitleEl.textContent = 'Цель не установлена';
             this.progressTextEl.textContent = 'Пожалуйста, добавьте цель';
             this.progressPercentageEl.textContent = '';
             this.progressFillEl.style.width = '0%';
-            if(this.piggyBankFillEl) this.piggyBankFillEl.style.clipPath = 'inset(100% 0 0 0)';
+            if (this.piggyBankFillEl) {
+                // for rect y-attribute transition we might set y value - but previous implementation used clipPath
+                // we'll try clipPath (works for our css)
+                this.piggyBankFillEl.style.clipPath = 'inset(100% 0 0 0)';
+            }
         } else {
-            const totalCollected = this.currentTransactions.reduce((acc, t) => (t.type === 'INCOME' ? acc + t.amount : acc - t.amount), 0);
-            const goalAmount = this.currentGoal.amount;
+            const totalCollected = this.currentTransactions.reduce((acc, t) => {
+                const amt = Number(t.amount) || 0;
+                return t.type === 'INCOME' ? acc + amt : acc - amt;
+            }, 0);
+
+            const goalAmount = Number(this.currentGoal.amount) || 0;
             const currencySymbol = this.currencySymbols[this.currentGoal.currency] || '';
-            const progressPercent = Math.max(0, Math.min(100, (totalCollected / goalAmount) * 100));
+            const progressPercent = goalAmount > 0 ? Math.max(0, Math.min(100, (totalCollected / goalAmount) * 100)) : 0;
 
             this.goalTitleEl.textContent = `Накопления на "${this.currentGoal.name}"`;
             this.progressTextEl.textContent = `${totalCollected.toFixed(2)} ${currencySymbol} / ${goalAmount.toFixed(2)} ${currencySymbol}`;
             this.progressPercentageEl.textContent = `${progressPercent.toFixed(1)}% накоплено`;
             this.progressFillEl.style.width = `${progressPercent}%`;
-            if(this.piggyBankFillEl) this.piggyBankFillEl.style.clipPath = `inset(${100 - progressPercent}% 0 0 0)`;
+            if (this.piggyBankFillEl) {
+                // clipPath expects percent of how much to hide from top: inset(top right bottom left)
+                this.piggyBankFillEl.style.clipPath = `inset(${100 - progressPercent}% 0 0 0)`;
+            }
         }
+
         this.renderTodaysExpenses();
         this.renderIncomeHistory();
     }
 
     renderTodaysExpenses() {
+        if (!this.expensesListEl) return;
         this.expensesListEl.innerHTML = '';
         const today = new Date().toISOString().split('T')[0];
-        const todayExpenses = this.currentTransactions.filter(t => t.type === 'EXPENSE' && t.date === today);
+        const todayExpenses = this.currentTransactions.filter(t => t.type === 'EXPENSE' && (t.date ? t.date === today : false));
 
         if (todayExpenses.length === 0) {
             this.expensesListEl.innerHTML = '<li>Сегодня расходов нет.</li>';
@@ -119,10 +167,11 @@ class App {
     }
 
     renderIncomeHistory() {
+        if (!this.incomesListEl) return;
         this.incomesListEl.innerHTML = '';
         const allIncomes = this.currentTransactions
             .filter(t => t.type === 'INCOME')
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            .sort((a, b) => new Date(b.timestamp || b.date || 0) - new Date(a.timestamp || a.date || 0));
 
         if (allIncomes.length === 0) {
             this.incomesListEl.innerHTML = '<li>История доходов пуста.</li>';
@@ -133,17 +182,23 @@ class App {
 
     renderTransaction(transaction, listElement, showTimestamp = false) {
         const li = document.createElement('li');
-        const currencySymbol = this.currencySymbols[this.currentGoal?.currency] || '';
+        const currencySymbol = this.currencySymbols[this.currentGoal?.currency] || this.currencySymbols.BYN || '';
         const sign = transaction.type === 'INCOME' ? '+' : '-';
-        const description = transaction.description || (transaction.type === 'INCOME' ? 'Доход' : transaction.category);
+        const description = transaction.description || (transaction.type === 'INCOME' ? 'Доход' : (transaction.category || 'Расход'));
 
-        let mainInfo = `<div><span>${description}</span><span style="color: ${sign === '+' ? 'green' : 'red'};">${sign}${transaction.amount.toFixed(2)} ${currencySymbol}</span></div>`;
+        // guard amount
+        const amount = Number(transaction.amount) || 0;
+        const color = sign === '+' ? 'green' : 'red';
 
-        if (showTimestamp && transaction.timestamp) {
-            const date = new Date(transaction.timestamp);
-            const formattedDate = date.toLocaleDateString('ru-RU');
-            const formattedTime = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-            mainInfo += `<div class="date">${formattedDate} ${formattedTime}</div>`;
+        let mainInfo = `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><span>${description}</span><span style="color:${color};font-weight:600;">${sign}${amount.toFixed(2)} ${currencySymbol}</span></div>`;
+
+        if (showTimestamp && (transaction.timestamp || transaction.date)) {
+            const d = transaction.timestamp ? new Date(transaction.timestamp) : new Date(transaction.date);
+            if (!isNaN(d.getTime())) {
+                const formattedDate = d.toLocaleDateString('ru-RU');
+                const formattedTime = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                mainInfo += `<div class="date">${formattedDate} ${formattedTime}</div>`;
+            }
         }
 
         li.innerHTML = mainInfo;
@@ -152,7 +207,8 @@ class App {
 
     openForm(containerId) {
         document.querySelectorAll('.form-container').forEach(c => c.classList.remove('active'));
-        document.getElementById(containerId).classList.add('active');
+        const el = document.getElementById(containerId);
+        if (el) el.classList.add('active');
     }
 
     openFormWithGoalCheck(containerId) {
@@ -164,7 +220,8 @@ class App {
     }
 
     async handleGoalSubmit(form) {
-        const selectedDateStr = form.querySelector('#goal-date-input').value;
+        // validate form fields
+        const selectedDateStr = form.querySelector('#goal-date-input')?.value;
         if (!selectedDateStr) {
             this.showNotification('Пожалуйста, выберите дату.', 'error');
             return;
@@ -172,33 +229,40 @@ class App {
         const selectedDate = new Date(selectedDateStr);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
         if (selectedDate < today) {
             this.showNotification('Дата цели не может быть в прошлом.', 'error');
             return;
         }
 
-        const amount = parseFloat(form.querySelector('#goal-amount-input').value);
-        if (amount <= 0) {
+        const amount = parseFloat(form.querySelector('#goal-amount-input')?.value || '0');
+        if (!(amount > 0)) {
             this.showNotification('Сумма цели должна быть положительной.', 'error');
             return;
         }
 
+        const name = (form.querySelector('#goal-name-input')?.value || '').trim();
+        const currency = form.querySelector('#goal-currency-input')?.value || 'BYN';
+        if (!name) {
+            this.showNotification('Введите название цели.', 'error');
+            return;
+        }
+
         const goalData = {
-            name: form.querySelector('#goal-name-input').value,
+            name,
             amount,
-            currency: form.querySelector('#goal-currency-input').value,
+            currency,
             date: selectedDateStr
         };
 
         try {
             const updatedGoal = await saveGoal(goalData);
-            this.currentGoal = updatedGoal;
-            this.currentTransactions = [];
+            // backend may return the saved goal or partial; handle gracefully
+            this.currentGoal = updatedGoal || goalData;
+            this.currentTransactions = []; // new goal resets transactions locally
             this.updateUI();
-            form.closest('.form-container').classList.remove('active');
+            form.closest('.form-container')?.classList.remove('active');
             this.showNotification('Цель успешно сохранена!', 'success');
-        } catch(e) {
+        } catch (e) {
             console.error('Ошибка сохранения цели:', e);
             this.showNotification('Ошибка сохранения цели.', 'error');
         }
@@ -206,25 +270,32 @@ class App {
 
     async handleTransactionSubmit(form, type) {
         const amountInput = form.querySelector(type === 'EXPENSE' ? '#expense-amount-input' : '#income-amount-input');
-        const amount = parseFloat(amountInput.value);
-        if (amount <= 0) {
+        const amount = parseFloat(amountInput?.value || '0');
+        if (!(amount > 0)) {
             this.showNotification('Сумма должна быть положительной.', 'error');
             return;
         }
+
         const transactionData = {
             amount,
             type,
-            category: type === 'EXPENSE' ? form.querySelector('#expense-category-input').value : 'income',
-            description: form.querySelector(type === 'EXPENSE' ? '#expense-description-input' : '#income-description-input').value,
+            category: type === 'EXPENSE' ? (form.querySelector('#expense-category-input')?.value || 'other') : 'income',
+            description: (form.querySelector(type === 'EXPENSE' ? '#expense-description-input' : '#income-description-input')?.value || '').trim(),
+            date: new Date().toISOString().split('T')[0], // default date
+            timestamp: new Date().toISOString()
         };
 
         try {
             const newTransaction = await saveTransaction(transactionData);
-            this.currentTransactions.push(newTransaction);
+            // backend might return created transaction — fallback to local one
+            this.currentTransactions.push(newTransaction || transactionData);
             this.updateUI();
-            form.closest('.form-container').classList.remove('active');
+            form.closest('.form-container')?.classList.remove('active');
             this.showNotification(`Добавлен ${type === 'EXPENSE' ? 'расход' : 'доход'}!`, 'success');
-        } catch(e) { console.error(e); this.showNotification('Ошибка сохранения транзакции.', 'error');}
+        } catch (e) {
+            console.error('Ошибка сохранения транзакции:', e);
+            this.showNotification('Ошибка сохранения транзакции.', 'error');
+        }
     }
 
     handleExpenseSubmit(form) { this.handleTransactionSubmit(form, 'EXPENSE'); }
@@ -235,11 +306,16 @@ class App {
             this.showNotification('Нет цели для удаления.', 'error');
             return;
         }
-        document.getElementById('modal-text').textContent = 'Вы уверены, что хотите удалить цель? Вся история транзакций также будет очищена.';
-        this.confirmationModal.classList.add('active');
+        const modalText = document.getElementById('modal-text');
+        if (modalText) modalText.textContent = 'Вы уверены, что хотите удалить цель? Вся история транзакций также будет очищена.';
+        if (this.confirmationModal) this.confirmationModal.classList.add('active');
+
+        // replace confirm handler to avoid double-binding
+        const parent = this.modalConfirmBtn?.parentNode;
+        if (!parent || !this.modalConfirmBtn) return;
 
         const newConfirmBtn = this.modalConfirmBtn.cloneNode(true);
-        this.modalConfirmBtn.parentNode.replaceChild(newConfirmBtn, this.modalConfirmBtn);
+        parent.replaceChild(newConfirmBtn, this.modalConfirmBtn);
         this.modalConfirmBtn = newConfirmBtn;
 
         this.modalConfirmBtn.addEventListener('click', async () => {
@@ -251,17 +327,22 @@ class App {
                 this.confirmationModal.classList.remove('active');
                 this.showNotification('Цель успешно удалена.', 'success');
             } catch (error) {
-                console.error("Failed to delete goal:", error);
+                console.error('Failed to delete goal:', error);
                 this.showNotification('Ошибка удаления цели.', 'error');
             }
         });
     }
 
     populateConverterSelects() {
+        if (!this.converterCurrency1 || !this.converterCurrency2 || !this.converterAmount1) return;
+
         const currencies = Object.keys(this.exchangeRates);
+        // Guarantee BYN exists
+        if (!currencies.includes('BYN')) this.exchangeRates.BYN = { buy: 1, sell: 1 };
+
         this.converterCurrency1.innerHTML = '';
         this.converterCurrency2.innerHTML = '';
-        currencies.forEach(currency => {
+        Object.keys(this.exchangeRates).forEach(currency => {
             const option1 = document.createElement('option');
             option1.value = currency;
             option1.textContent = currency;
@@ -272,13 +353,17 @@ class App {
             option2.textContent = currency;
             this.converterCurrency2.appendChild(option2);
         });
-        this.converterCurrency1.value = 'USD';
-        this.converterCurrency2.value = 'BYN';
-        this.converterAmount1.value = 1;
+
+        // sensible defaults if available
+        this.converterCurrency1.value = this.exchangeRates.USD ? 'USD' : Object.keys(this.exchangeRates)[0] || 'BYN';
+        this.converterCurrency2.value = this.exchangeRates.BYN ? 'BYN' : Object.keys(this.exchangeRates)[0] || 'BYN';
+        this.converterAmount1.value = this.converterAmount1.value || 1;
         this.handleConversion();
     }
 
     handleConversion() {
+        if (!this.converterAmount1 || !this.converterCurrency1 || !this.converterCurrency2 || !this.converterAmount2) return;
+
         const amount = parseFloat(this.converterAmount1.value);
         const fromCurrency = this.converterCurrency1.value;
         const toCurrency = this.converterCurrency2.value;
@@ -288,48 +373,153 @@ class App {
             return;
         }
 
-        const amountInByn = fromCurrency === 'BYN' ? amount : (amount * this.exchangeRates[fromCurrency].buy);
-        const result = toCurrency === 'BYN' ? amountInByn : (amountInByn / this.exchangeRates[toCurrency].sell);
+        // Interpret exchangeRates as BYN per 1 unit of foreign currency
+        // amountInByn = amount * buy_rate_of_fromCurrency  (if fromCurrency != BYN)
+        const fromRate = this.exchangeRates[fromCurrency];
+        const toRate = this.exchangeRates[toCurrency];
 
-        this.converterAmount2.value = result.toFixed(4);
+        const amountInByn = fromCurrency === 'BYN' ? amount : (amount * (Number(fromRate.buy) || 0));
+        const result = toCurrency === 'BYN' ? amountInByn : (amountInByn / (Number(toRate.sell) || 1));
+
+        this.converterAmount2.value = Number.isFinite(result) ? result.toFixed(4) : '';
     }
 
+    // Robust parser for several possible response shapes from /api/currency
     async fetchCurrencyRates() {
         try {
-            const response = await fetch('/api/currency');
-            if (!response.ok) throw new Error('Network response failed');
-            const ratesData = await response.json();
+            // ⚙️ 1. Запрос с таймаутом и без кэширования
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000); // 5 секунд максимум
+            const response = await fetch('/api/currency', {
+                cache: 'no-store',
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
 
-            if (ratesData && ratesData.length > 0) {
-                this.exchangeRates = {
-                    'BYN': { buy: 1, sell: 1 },
-                    'USD': { buy: parseFloat(ratesData[0].USD_in), sell: parseFloat(ratesData[0].USD_out) },
-                    'EUR': { buy: parseFloat(ratesData[0].EUR_in), sell: parseFloat(ratesData[0].EUR_out) },
-                    'RUB': { buy: parseFloat(ratesData[0].RUB_in) / 100, sell: parseFloat(ratesData[0].RUB_out) / 100 },
-                    'CNY': { buy: parseFloat(ratesData[0].CNY_in) / 10, sell: parseFloat(ratesData[0].CNY_out) / 10 }
-                };
-
-                this.currencyTableBody.innerHTML = `
-                    <tr><td>USD</td><td>${this.exchangeRates.USD.buy.toFixed(4)}</td><td>${this.exchangeRates.USD.sell.toFixed(4)}</td></tr>
-                    <tr><td>EUR</td><td>${this.exchangeRates.EUR.buy.toFixed(4)}</td><td>${this.exchangeRates.EUR.sell.toFixed(4)}</td></tr>
-                    <tr><td>RUB (100)</td><td>${(this.exchangeRates.RUB.buy * 100).toFixed(4)}</td><td>${(this.exchangeRates.RUB.sell * 100).toFixed(4)}</td></tr>
-                    <tr><td>CNY (10)</td><td>${(this.exchangeRates.CNY.buy * 10).toFixed(4)}</td><td>${(this.exchangeRates.CNY.sell * 10).toFixed(4)}</td></tr>
-                `;
-                this.populateConverterSelects();
-            } else {
-                throw new Error('No exchange rate data found');
+            // ⚠️ Проверяем корректность ответа
+            if (!response.ok) {
+                console.warn(`Currency API returned ${response.status}`);
+                throw new Error(`Network response not ok (${response.status})`);
             }
+
+            const data = await response.json();
+
+            // 🧩 Минимальный набор валют
+            const rates = { BYN: { buy: 1, sell: 1 } };
+
+            const toNum = (v) => {
+                if (v === null || v === undefined) return NaN;
+                const n = Number(String(v).replace(',', '.'));
+                return Number.isFinite(n) ? n : NaN;
+            };
+
+            // 🧠 Обработка формата данных из API (JSON / массив / объект / fallback)
+            if (Array.isArray(data) && data.length > 0) {
+                const first = data[0];
+                if (first.USD_in || first.USD_out) {
+                    rates.USD = { buy: toNum(first.USD_in), sell: toNum(first.USD_out) };
+                    rates.EUR = { buy: toNum(first.EUR_in), sell: toNum(first.EUR_out) };
+                    rates.RUB = { buy: toNum(first.RUB_in) / 100, sell: toNum(first.RUB_out) / 100 };
+                    rates.CNY = { buy: toNum(first.CNY_in) / 10, sell: toNum(first.CNY_out) / 10 };
+                } else {
+                    // универсальный случай
+                    data.forEach(entry => {
+                        const code = entry.Cur_Abbreviation || entry.code || entry.currency || entry.Ccy;
+                        if (!code) return;
+                        const buy = toNum(entry.RateBuy ?? entry.buy ?? entry.in);
+                        const sell = toNum(entry.RateSell ?? entry.sell ?? entry.out);
+                        if (Number.isFinite(buy) || Number.isFinite(sell)) {
+                            rates[code] = {
+                                buy: Number.isFinite(buy) ? buy : sell,
+                                sell: Number.isFinite(sell) ? sell : buy
+                            };
+                        }
+                    });
+                }
+            } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+                // например, { rates: {...} } или { USD: {...} }
+                const r = data.rates || data;
+                for (const [code, val] of Object.entries(r)) {
+                    if (typeof val === 'object') {
+                        const buy = toNum(val.buy ?? val.in ?? val.rate);
+                        const sell = toNum(val.sell ?? val.out ?? val.rate);
+                        if (Number.isFinite(buy) || Number.isFinite(sell)) {
+                            rates[code] = {
+                                buy: Number.isFinite(buy) ? buy : sell,
+                                sell: Number.isFinite(sell) ? sell : buy
+                            };
+                        }
+                    }
+                }
+            }
+
+            // 🧹 Нормализация данных (удаляем пустые записи)
+            const normalized = { BYN: { buy: 1, sell: 1 } };
+            for (const [code, val] of Object.entries(rates)) {
+                if (!val || (!Number.isFinite(val.buy) && !Number.isFinite(val.sell))) continue;
+                const buy = Number.isFinite(val.buy) ? val.buy : val.sell;
+                const sell = Number.isFinite(val.sell) ? val.sell : val.buy;
+                normalized[code] = { buy, sell };
+            }
+
+            this.exchangeRates = normalized;
+
+            // 💰 Обновление таблицы валют
+            const rows = [];
+            const pushRow = (label, val, mult = 1) => {
+                if (!val) return;
+                rows.push(
+                    `<tr><td>${label}</td><td>${(val.buy * mult).toFixed(4)}</td><td>${(val.sell * mult).toFixed(4)}</td></tr>`
+                );
+            };
+
+            pushRow('USD', this.exchangeRates.USD);
+            pushRow('EUR', this.exchangeRates.EUR);
+            pushRow('RUB (100)', this.exchangeRates.RUB, 100);
+            pushRow('CNY (10)', this.exchangeRates.CNY, 10);
+
+            if (rows.length === 0) {
+                for (const [code, val] of Object.entries(this.exchangeRates)) {
+                    if (code === 'BYN') continue;
+                    pushRow(code, val);
+                    if (rows.length >= 5) break;
+                }
+            }
+
+            if (this.currencyTableBody) {
+                this.currencyTableBody.innerHTML = rows.length
+                    ? rows.join('')
+                    : `<tr><td colspan="3">Курсы недоступны</td></tr>`;
+            }
+
+            this.populateConverterSelects();
+            console.log('Currency rates updated:', this.exchangeRates);
+
         } catch (error) {
-            console.error('Failed to fetch currency rates:', error);
-            this.currencyTableBody.innerHTML = `<tr><td colspan="3">Не удалось загрузить курсы.</td></tr>`;
+            console.warn('⚠️ Не удалось загрузить курсы валют:', error);
+
+            // 🧩 Устанавливаем безопасный fallback
+            this.exchangeRates = { BYN: { buy: 1, sell: 1 } };
+
+            if (this.currencyTableBody) {
+                this.currencyTableBody.innerHTML = `<tr><td colspan="3">Не удалось загрузить курсы.</td></tr>`;
+            }
+
+            this.populateConverterSelects();
+            this.showNotification('Курсы валют временно недоступны.', 'error');
         }
     }
 
     showNotification(message, type = 'info') {
+        const container = document.getElementById('notifications-container');
+        if (!container) {
+            console.warn('No notifications container in DOM:', message);
+            return;
+        }
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-        document.getElementById('notifications-container').appendChild(notification);
+        container.appendChild(notification);
         setTimeout(() => notification.remove(), 4000);
     }
 }
