@@ -1,25 +1,57 @@
+// src/main/resources/static/js/api.js
+
 const API_BASE_URL = 'http://localhost:8080/api/data';
 const AUTH_URL = 'http://localhost:8080/api/auth';
-let globalAuthHeader = '';
 
+/**
+ * Выполняет вход пользователя, отправляя данные формы, как ожидает Spring Security.
+ * @param {string} username - Имя пользователя.
+ * @param {string} password - Пароль.
+ * @returns {Promise<boolean>} - true в случае успеха, иначе false.
+ */
 export async function login(username, password) {
-    const credentials = btoa(`${username}:${password}`);
-    const authHeader = `Basic ${credentials}`;
+    const loginProcessingUrl = `${AUTH_URL}/login`;
 
-    const response = await fetch(`${API_BASE_URL}`, {
-        headers: { 'Authorization': authHeader }
-    });
+    const details = {
+        'username': username,
+        'password': password
+    };
+    const formBody = Object.keys(details)
+        .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(details[key]))
+        .join('&');
 
-    if (response.ok) {
-        globalAuthHeader = authHeader;
-        const data = await response.json();
-        sessionStorage.setItem('userData', JSON.stringify(data));
-        sessionStorage.setItem('authHeader', authHeader);
-        return true;
+    try {
+        const response = await fetch(loginProcessingUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+            },
+            body: formBody
+        });
+
+        if (response.ok && response.url.includes('index.html')) {
+            const data = await getFullData();
+            if (data) {
+                sessionStorage.setItem('userData', JSON.stringify(data));
+                return true;
+            }
+        }
+
+        return false;
+
+    } catch (error) {
+        console.error("Ошибка при попытке входа:", error);
+        return false;
     }
-    return false;
 }
 
+
+/**
+ * Регистрирует нового пользователя.
+ * @param {string} username - Имя пользователя.
+ * @param {string} password - Пароль.
+ * @returns {Promise<Response>} - Ответ от сервера.
+ */
 export async function register(username, password) {
     return await fetch(`${AUTH_URL}/register`, {
         method: 'POST',
@@ -28,47 +60,52 @@ export async function register(username, password) {
     });
 }
 
-function getProtectedHeaders() {
-    if (!globalAuthHeader) {
-        globalAuthHeader = sessionStorage.getItem('authHeader');
-    }
-    if (!globalAuthHeader) {
-        window.location.href = 'login.html';
-        throw new Error('Not authenticated');
-    }
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': globalAuthHeader
-    };
-}
-
+/**
+ * Оболочка для всех защищенных запросов к API.
+ * Автоматически использует сессионные cookie.
+ */
 async function fetchAPI(endpoint = '', options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
     try {
-        const headers = getProtectedHeaders();
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+            // ИЗМЕНЕНИЕ: Эта строка решает проблему с сессиями и конфиденциальностью
+            credentials: 'include'
+        });
 
         if (response.status === 401) {
             sessionStorage.clear();
             window.location.href = 'login.html';
             throw new Error('Unauthorized');
         }
-        if (!response.ok && response.status !== 204) {
+
+        if (!response.ok && response.status !== 204 /* No Content */) {
             throw new Error(`API Error: ${response.statusText}`);
         }
+
         return response.status === 204 ? null : response.json();
+
     } catch (error) {
-        console.error("API Fetch Error:", error);
-        if (error.message !== "Not authenticated") {
-            // Можно добавить уведомление об ошибке
-        }
+        console.error("API Fetch Error:", error.message);
         throw error;
     }
 }
 
+/**
+ * Получает все данные пользователя (цель и транзакции).
+ */
 export async function getFullData() {
     return fetchAPI();
 }
 
+/**
+ * Сохраняет цель пользователя.
+ */
 export async function saveGoal(goal) {
     return fetchAPI('/goal', {
         method: 'POST',
@@ -76,6 +113,9 @@ export async function saveGoal(goal) {
     });
 }
 
+/**
+ * Сохраняет транзакцию.
+ */
 export async function saveTransaction(transaction) {
     return fetchAPI('/transaction', {
         method: 'POST',
@@ -83,14 +123,28 @@ export async function saveTransaction(transaction) {
     });
 }
 
+/**
+ * Удаляет цель и все связанные транзакции.
+ */
 export async function deleteGoal() {
     return fetchAPI('/goal', {
         method: 'DELETE'
     });
 }
 
-export function logout() {
-    sessionStorage.clear();
-    globalAuthHeader = '';
-    window.location.href = 'login.html';
+/**
+ * Выполняет выход из системы.
+ */
+export async function logout() {
+    try {
+        await fetch(`${AUTH_URL}/logout`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (error) {
+        console.error("Ошибка при выходе из системы:", error);
+    } finally {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    }
 }

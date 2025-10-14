@@ -46,9 +46,7 @@ public class SecurityConfig {
                                 "/css/**",
                                 "/js/**",
                                 "/font/**",
-                                "/assets/**",
-                                "/index.html", // Добавлено
-                                "/" // Добавлено
+                                "/assets/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

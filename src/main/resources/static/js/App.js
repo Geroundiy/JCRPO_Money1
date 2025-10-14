@@ -384,129 +384,67 @@ class App {
         this.converterAmount2.value = Number.isFinite(result) ? result.toFixed(4) : '';
     }
 
-    // Robust parser for several possible response shapes from /api/currency
     async fetchCurrencyRates() {
         try {
-            // ⚙️ 1. Запрос с таймаутом и без кэширования
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000); // 5 секунд максимум
+            const timeout = setTimeout(() => controller.abort(), 8000);
             const response = await fetch('/api/currency', {
                 cache: 'no-store',
-                signal: controller.signal
+                signal: controller.signal,
+                credentials: 'include'
             });
             clearTimeout(timeout);
 
-            // ⚠️ Проверяем корректность ответа
             if (!response.ok) {
-                console.warn(`Currency API returned ${response.status}`);
                 throw new Error(`Network response not ok (${response.status})`);
             }
-
             const data = await response.json();
 
-            // 🧩 Минимальный набор валют
-            const rates = { BYN: { buy: 1, sell: 1 } };
+            let ratesSource = data.find(item => item && item.USD_in && item.EUR_in);
+            if (!ratesSource) {
+                ratesSource = data.find(item => item && item.USD_in);
+            }
+            if (!ratesSource) {
+                ratesSource = {};
+            }
 
+            const rates = { BYN: { buy: 1, sell: 1 } };
             const toNum = (v) => {
                 if (v === null || v === undefined) return NaN;
                 const n = Number(String(v).replace(',', '.'));
                 return Number.isFinite(n) ? n : NaN;
             };
 
-            // 🧠 Обработка формата данных из API (JSON / массив / объект / fallback)
-            if (Array.isArray(data) && data.length > 0) {
-                const first = data[0];
-                if (first.USD_in || first.USD_out) {
-                    rates.USD = { buy: toNum(first.USD_in), sell: toNum(first.USD_out) };
-                    rates.EUR = { buy: toNum(first.EUR_in), sell: toNum(first.EUR_out) };
-                    rates.RUB = { buy: toNum(first.RUB_in) / 100, sell: toNum(first.RUB_out) / 100 };
-                    rates.CNY = { buy: toNum(first.CNY_in) / 10, sell: toNum(first.CNY_out) / 10 };
-                } else {
-                    // универсальный случай
-                    data.forEach(entry => {
-                        const code = entry.Cur_Abbreviation || entry.code || entry.currency || entry.Ccy;
-                        if (!code) return;
-                        const buy = toNum(entry.RateBuy ?? entry.buy ?? entry.in);
-                        const sell = toNum(entry.RateSell ?? entry.sell ?? entry.out);
-                        if (Number.isFinite(buy) || Number.isFinite(sell)) {
-                            rates[code] = {
-                                buy: Number.isFinite(buy) ? buy : sell,
-                                sell: Number.isFinite(sell) ? sell : buy
-                            };
-                        }
-                    });
-                }
-            } else if (data && typeof data === 'object' && !Array.isArray(data)) {
-                // например, { rates: {...} } или { USD: {...} }
-                const r = data.rates || data;
-                for (const [code, val] of Object.entries(r)) {
-                    if (typeof val === 'object') {
-                        const buy = toNum(val.buy ?? val.in ?? val.rate);
-                        const sell = toNum(val.sell ?? val.out ?? val.rate);
-                        if (Number.isFinite(buy) || Number.isFinite(sell)) {
-                            rates[code] = {
-                                buy: Number.isFinite(buy) ? buy : sell,
-                                sell: Number.isFinite(sell) ? sell : buy
-                            };
-                        }
-                    }
-                }
-            }
+            rates.USD = { buy: toNum(ratesSource.USD_in), sell: toNum(ratesSource.USD_out) };
+            rates.EUR = { buy: toNum(ratesSource.EUR_in), sell: toNum(ratesSource.EUR_out) };
+            rates.RUB = { buy: toNum(ratesSource.RUB_in) / 100, sell: toNum(ratesSource.RUB_out) / 100 };
+            rates.CNY = { buy: toNum(ratesSource.CNY_in) / 10, sell: toNum(ratesSource.CNY_out) / 10 };
 
-            // 🧹 Нормализация данных (удаляем пустые записи)
             const normalized = { BYN: { buy: 1, sell: 1 } };
             for (const [code, val] of Object.entries(rates)) {
-                if (!val || (!Number.isFinite(val.buy) && !Number.isFinite(val.sell))) continue;
-                const buy = Number.isFinite(val.buy) ? val.buy : val.sell;
-                const sell = Number.isFinite(val.sell) ? val.sell : val.buy;
-                normalized[code] = { buy, sell };
-            }
-
-            this.exchangeRates = normalized;
-
-            // 💰 Обновление таблицы валют
-            const rows = [];
-            const pushRow = (label, val, mult = 1) => {
-                if (!val) return;
-                rows.push(
-                    `<tr><td>${label}</td><td>${(val.buy * mult).toFixed(4)}</td><td>${(val.sell * mult).toFixed(4)}</td></tr>`
-                );
-            };
-
-            pushRow('USD', this.exchangeRates.USD);
-            pushRow('EUR', this.exchangeRates.EUR);
-            pushRow('RUB (100)', this.exchangeRates.RUB, 100);
-            pushRow('CNY (10)', this.exchangeRates.CNY, 10);
-
-            if (rows.length === 0) {
-                for (const [code, val] of Object.entries(this.exchangeRates)) {
-                    if (code === 'BYN') continue;
-                    pushRow(code, val);
-                    if (rows.length >= 5) break;
+                if (val && Number.isFinite(val.buy) && Number.isFinite(val.sell)) {
+                    normalized[code] = val;
                 }
             }
+            this.exchangeRates = normalized;
+
+            const rows = [];
+            if (normalized.USD) rows.push(`<tr><td>USD</td><td>${normalized.USD.buy.toFixed(4)}</td><td>${normalized.USD.sell.toFixed(4)}</td></tr>`);
+            if (normalized.EUR) rows.push(`<tr><td>EUR</td><td>${normalized.EUR.buy.toFixed(4)}</td><td>${normalized.EUR.sell.toFixed(4)}</td></tr>`);
+            if (normalized.RUB) rows.push(`<tr><td>RUB (100)</td><td>${(normalized.RUB.buy * 100).toFixed(4)}</td><td>${(normalized.RUB.sell * 100).toFixed(4)}</td></tr>`);
+            if (normalized.CNY) rows.push(`<tr><td>CNY (10)</td><td>${(normalized.CNY.buy * 10).toFixed(4)}</td><td>${(normalized.CNY.sell * 10).toFixed(4)}</td></tr>`);
 
             if (this.currencyTableBody) {
-                this.currencyTableBody.innerHTML = rows.length
-                    ? rows.join('')
-                    : `<tr><td colspan="3">Курсы недоступны</td></tr>`;
+                this.currencyTableBody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="3">Курсы недоступны</td></tr>`;
             }
-
             this.populateConverterSelects();
-            console.log('Currency rates updated:', this.exchangeRates);
-
         } catch (error) {
             console.warn('⚠️ Не удалось загрузить курсы валют:', error);
-
-            // 🧩 Устанавливаем безопасный fallback
             this.exchangeRates = { BYN: { buy: 1, sell: 1 } };
-
             if (this.currencyTableBody) {
                 this.currencyTableBody.innerHTML = `<tr><td colspan="3">Не удалось загрузить курсы.</td></tr>`;
             }
-
             this.populateConverterSelects();
-            this.showNotification('Курсы валют временно недоступны.', 'error');
         }
     }
 

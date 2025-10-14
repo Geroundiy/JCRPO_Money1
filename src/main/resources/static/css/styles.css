@@ -93,9 +93,9 @@ body.dark-theme .dark-video {
 /* --- SVG PIGGY BANK STYLES --- */
 .piggy-bank-container {
     position: fixed;
-    left: 20px; /* Moved to the left side */
+    left: 20%;
     top: 50%;   /* Vertically centered */
-    transform: translateY(-50%); /* Adjust for vertical centering */
+    transform: translate(-50%, -50%); /* Adjust for vertical centering */
     width: 350px; /* Increased size */
     height: 350px;
     z-index: 5; /* above video but below main container */
