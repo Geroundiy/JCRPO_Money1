@@ -22,7 +22,6 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegistrationRequest request) {
         try {
-            // Валидация входных данных
             if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Username cannot be empty");
             }
