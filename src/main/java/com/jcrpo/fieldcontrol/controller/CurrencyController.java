@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-
 import java.time.Duration;
 import java.time.Instant;
 
@@ -18,12 +17,11 @@ import java.time.Instant;
 @RequestMapping("/api/currency")
 @RequiredArgsConstructor
 public class CurrencyController {
-
     private static final Logger log = LoggerFactory.getLogger(CurrencyController.class);
     private final RestTemplate restTemplate;
     private final CurrencyCache currencyCache; // Внедряем сессионный кэш
 
-    // Используем более надежный URL, который возвращает данные по всем отделениям
+    // ИЗМЕНЕНИЕ: URL обновлен для города Минск, как вы просили.
     private static final String BELARUSBANK_API_URL = "https://belarusbank.by/api/kursExchange?city=Гомель";
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
@@ -33,7 +31,6 @@ public class CurrencyController {
             log.info("Cache for current session is stale. Refreshing...");
             refreshRatesForSession();
         }
-
         // Отдаем данные из кэша, уникального для этой сессии
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)

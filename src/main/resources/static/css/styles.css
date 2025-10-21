@@ -339,68 +339,116 @@ body.dark-theme .dark-video {
 }
 
 /* ------------------ DARK THEME OVERRIDES ------------------ */
+/* ------------------ DARK THEME OVERRIDES ------------------ */
 body.dark-theme {
-    background-color: #070708;
+    /* Фоновое видео будет основным. Этот цвет - запасной вариант. */
+    background-color: #050208;
     color: #e6eef3;
 }
 
-/* container and widgets darker */
+/* Эффект "стекла" (glassmorphism) для контейнера с повышенной прозрачностью */
 body.dark-theme .container {
-    background-color: rgba(20, 20, 20, 0.65);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
-    color: #e6eef3;
+    /* ИЗМЕНЕНИЕ: Уменьшена непрозрачность (альфа-канал) в RGBA для градиента */
+    background: linear-gradient(145deg, rgba(119, 76, 171, 0.65), rgba(60, 5, 112, 0.7), rgba(35, 38, 87, 0.75));
+    backdrop-filter: blur(14px); /* Немного усилил размытие для лучшего эффекта */
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(119, 76, 171, 0.25); /* Рамка тоже стала прозрачнее */
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    color: #f0e8ff;
 }
+
 body.dark-theme .widget {
-    background-color: rgba(18, 18, 18, 0.6);
+    background-color: rgba(18, 18, 18, 0.4); /* Виджеты также стали прозрачнее */
+    border: 1px solid rgba(255, 255, 255, 0.04);
     color: #e6eef3;
 }
 
-/* piggy slightly dim in dark theme */
+/* Копилка немного приглушена в тёмной теме */
 body.dark-theme .piggy-bank-container {
     filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6)) saturate(0.9) brightness(0.95);
 }
 
-/* progress and accents */
-body.dark-theme .progress-bar { background-color: rgba(255,255,255,0.06); }
-body.dark-theme .progress-fill { background: linear-gradient(90deg,#66bb6a,#4caf50); }
-body.dark-theme .progress-percentage { color: #8ae79c; }
-
-/* headers and text */
-body.dark-theme .title, body.dark-theme h2 { color: #dfefff; }
-body.dark-theme .logout-btn {
-    background: #2b2b2b; color: #ddd;
+/* Прогресс и акценты в фиолетовой теме */
+body.dark-theme .progress-bar {
+    background-color: rgba(255,255,255,0.08);
 }
-body.dark-theme .logout-btn:hover { background: #383838; }
+body.dark-theme .progress-fill {
+    background: linear-gradient(90deg, #9b59b6, #774cab);
+}
+body.dark-theme .progress-percentage {
+    color: #d8b9ff;
+}
 
-/* table */
-body.dark-theme #currency-table thead { color: #cfdff0; }
+/* Заголовки и текст */
+body.dark-theme .title, body.dark-theme h2 {
+    color: #f5efff;
+}
+body.dark-theme .logout-btn {
+    background: #2b2b2b;
+    color: #ddd;
+}
+body.dark-theme .logout-btn:hover {
+    background: #383838;
+}
+
+/* Таблица */
+body.dark-theme #currency-table thead {
+    color: #cfdff0;
+}
 body.dark-theme #currency-table th, body.dark-theme #currency-table td {
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
     color: #e6eef3;
 }
-body.dark-theme #currency-table tbody td:first-child { color: #f0f9ff; }
+body.dark-theme #currency-table tbody td:first-child {
+    color: #f0f9ff;
+}
 
-/* action buttons (make softer in dark) */
-body.dark-theme .action-btn { box-shadow: 0 6px 18px rgba(0,0,0,0.6); }
-body.dark-theme .main-btn { background-color: #2f8e4d; }
+/* Кнопки действий в фиолетовой теме */
+body.dark-theme .action-btn {
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+}
+body.dark-theme .main-btn {
+    background-color: #774cab;
+}
 
-/* forms & modals in dark */
+/* Формы и модальные окна в тёмной теме */
 body.dark-theme .form, body.dark-theme .modal-content {
-    background: #121212; color: #e6eef3;
+    background: rgba(31, 29, 43, 0.8); /* Формы тоже делаем полупрозрачными */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #e6eef3;
+    border: 1px solid rgba(119, 76, 171, 0.2);
     box-shadow: 0 10px 30px rgba(0,0,0,0.7);
 }
+
 body.dark-theme .form input, body.dark-theme .form select, body.dark-theme .form textarea {
-    background: #0f0f0f; border: 1px solid rgba(255,255,255,0.06); color: #e6eef3;
+    background: rgba(37, 40, 54, 0.8);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #e6eef3;
 }
-body.dark-theme .form-submit-btn { background: #3a8a4a; }
-body.dark-theme .form-submit-btn:hover { background: #34753f; }
 
-/* notifications in dark theme */
-body.dark-theme .notification { background-color: rgba(255,255,255,0.06); color: #fff; }
-body.dark-theme .notification.success { background-color: #2e7d32; }
-body.dark-theme .notification.error { background-color: #b71c1c; }
+body.dark-theme .form-submit-btn {
+    background: #774cab;
+}
+body.dark-theme .form-submit-btn:hover {
+    background: #895ebb;
+}
 
-/* ensure UI always above video, piggy above video */
+/* Уведомления в тёмной теме */
+body.dark-theme .notification {
+    background-color: rgba(37, 40, 54, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+body.dark-theme .notification.success {
+    background-color: #27ae60;
+    border-color: #2ecc71;
+}
+body.dark-theme .notification.error {
+    background-color: #c0392b;
+    border-color: #e74c3c;
+}
+
 .dark-video { z-index: -2; }
 .piggy-bank-container { z-index: 5; }
 .container { z-index: 10; }
