@@ -86,6 +86,20 @@ class App {
             this.showNotification('Ошибка загрузки данных.', 'error');
         }
         this.fetchCurrencyRates();
+
+        // Подсказка пользователю, где добавить цель — показываем однократно, если цели нет
+        try {
+            if (!this.currentGoal) {
+                const hintKey = 'hint_add_goal_shown_v1';
+                if (!localStorage.getItem(hintKey)) {
+                    this.showNotification('Подсказка: чтобы добавить цель — нажмите кнопку меню внизу (кнопка открытия меню).', 'info');
+                    localStorage.setItem(hintKey, '1');
+                }
+            }
+        } catch (e) {
+            // localStorage может быть недоступен — игнорируем
+            console.warn('Не удалось проверить/установить подсказку в localStorage', e);
+        }
     }
 
     updateUI() {
@@ -107,14 +121,19 @@ class App {
             }, 0);
             const goalAmount = Number(this.currentGoal.amount) || 0;
             const currencySymbol = this.currencySymbols[this.currentGoal.currency] || '';
-            const progressPercent = goalAmount > 0 ?
-                Math.max(0, Math.min(100, (totalCollected / goalAmount) * 100)) : 0;
+
+            // реальный процент (может быть >100)
+            const realPercent = goalAmount > 0 ? ((totalCollected / goalAmount) * 100) : 0;
+            const displayPercent = Number.isFinite(realPercent) ? realPercent : 0;
+
             this.goalTitleEl.textContent = `Накопления на "${this.currentGoal.name}"`;
             this.progressTextEl.textContent = `${totalCollected.toFixed(2)} ${currencySymbol} / ${goalAmount.toFixed(2)} ${currencySymbol}`;
-            this.progressPercentageEl.textContent = `${progressPercent.toFixed(1)}% накоплено`;
-            this.progressFillEl.style.width = `${progressPercent}%`;
+            this.progressPercentageEl.textContent = `${displayPercent.toFixed(1)}% накоплено`;
+            // Для визуала ограничиваем до 100%, а значение текста может превышать 100%
+            this.progressFillEl.style.width = `${Math.min(displayPercent, 100)}%`;
             if (this.piggyBankFillEl) {
-                this.piggyBankFillEl.style.clipPath = `inset(${100 - progressPercent}% 0 0 0)`;
+                const fillPercentForPiggy = Math.min(displayPercent, 100);
+                this.piggyBankFillEl.style.clipPath = `inset(${100 - fillPercentForPiggy}% 0 0 0)`;
             }
         }
         this.renderTodaysExpenses();
@@ -224,6 +243,19 @@ class App {
             this.showNotification('Сумма должна быть положительной.', 'error');
             return;
         }
+
+        // Проверка: не уйдём ли в минус (только для расходов)
+        if (type === 'EXPENSE') {
+            const totalCollectedNow = this.currentTransactions.reduce((acc, t) => {
+                const amt = Number(t.amount) || 0;
+                return t.type === 'INCOME' ? acc + amt : acc - amt;
+            }, 0);
+            if (totalCollectedNow - amount < 0) {
+                this.showNotification('Ошибка: нельзя уйти в минус на копилке.', 'error');
+                return; // блокируем сохранение транзакции
+            }
+        }
+
         const transactionData = {
             amount,
             type,
@@ -275,48 +307,144 @@ class App {
     }
 
     processAndDisplayRates(ratesData) {
-        // УЛУЧШЕННАЯ ЛОГИКА:
-        if (!Array.isArray(ratesData) || ratesData.length === 0) {
-            console.error("API вернул невалидные данные (не массив или пустой массив):", ratesData);
-            if (this.currencyTableBody) this.currencyTableBody.innerHTML = `<tr><td colspan="3">Ошибка формата данных от API.</td></tr>`;
-            this.populateConverterSelects();
-            return;
+        // Логируем полностью (для отладки в devtools)
+        try { console.debug('Raw currency data:', ratesData); } catch (e) {}
+
+        // Если сервер вдруг вернул строку — пробуем распарсить
+        if (typeof ratesData === 'string') {
+            const trimmed = ratesData.trim();
+            // Попытка прямого JSON.parse
+            try {
+                ratesData = JSON.parse(trimmed);
+            } catch (e) {
+                // Если внутри строки есть JSON (например, HTML-обёртка), пытаемся вытащить { ... }
+                const first = trimmed.indexOf('{');
+                const last = trimmed.lastIndexOf('}');
+                if (first !== -1 && last !== -1 && last > first) {
+                    try {
+                        ratesData = JSON.parse(trimmed.slice(first, last + 1));
+                    } catch (err) {
+                        // не удалось распарсить — оставляем строку
+                        console.warn('Не удалось распарсить строковый ответ как JSON.', err);
+                    }
+                }
+            }
         }
 
-        // 1. Сначала пытаемся найти идеальный объект с курсами доллара в [0] элементе.
-        let ratesSource = (ratesData[0] && ratesData[0].USD_in) ? ratesData[0] : null;
+        // Функция для проверки, содержит ли узел нужные поля курсов
+        const nodeLooksLikeRates = (node) => {
+            if (!node || typeof node !== 'object') return false;
+            const keys = Object.keys(node);
+            // прямые поля USD_in / EUR_in / RUB_in / CNY_in
+            if (keys.some(k => /^(USD|EUR|RUB|CNY)_in$/.test(k))) return true;
+            // вложенный объект вида USD: { in: .., out: .. } или USD: { buy:.., sell:.. }
+            if (keys.includes('USD') && typeof node.USD === 'object') {
+                if (('in' in node.USD) || ('out' in node.USD) || ('buy' in node.USD) || ('sell' in node.USD)) return true;
+            }
+            // похожие альтернативы (buy/sell на верхнем уровне)
+            if (keys.some(k => /(USD|EUR|RUB|CNY)/.test(k) && typeof node[k] === 'number')) return true;
+            return false;
+        };
 
-        // 2. Если в первом элементе нет курсов, ищем в остальных.
-        if (!ratesSource) {
-            ratesSource = ratesData.find(item => item && item.USD_in && item.USD_out);
-        }
+        // Рекурсивный поиск подходящего узла в объекте/массиве
+        const findRatesNode = (obj, visited = new Set()) => {
+            if (!obj || typeof obj !== 'object') return null;
+            if (visited.has(obj)) return null;
+            visited.add(obj);
 
-        // 3. Если после всех попыток ничего не найдено, выводим сообщение.
-        if (!ratesSource) {
-            console.error("Не удалось найти валидный объект с курсами в ответе API:", ratesData);
-            if (this.currencyTableBody) this.currencyTableBody.innerHTML = `<tr><td colspan="3">Курсы валют временно недоступны.</td></tr>`;
-            this.populateConverterSelects();
-            return;
-        }
+            if (Array.isArray(obj)) {
+                for (const item of obj) {
+                    const found = findRatesNode(item, visited);
+                    if (found) return found;
+                }
+                return null;
+            } else {
+                if (nodeLooksLikeRates(obj)) return obj;
+                // часто API кладёт курсы в поле 'data', 'rates', 'exchange' — проверим их в первую очередь
+                for (const candidateKey of ['data', 'rates', 'exchange', 'kurs', 'branches']) {
+                    if (obj[candidateKey]) {
+                        const found = findRatesNode(obj[candidateKey], visited);
+                        if (found) return found;
+                    }
+                }
+                // иначе рекурсивно в значения
+                for (const val of Object.values(obj)) {
+                    const found = findRatesNode(val, visited);
+                    if (found) return found;
+                }
+                return null;
+            }
+        };
 
         const toNum = (v) => {
             if (v === null || v === undefined || String(v).trim() === '') return NaN;
-            const n = Number(String(v).replace(',', '.'));
+            const n = Number(String(v).replace(',', '.').replace(/\s+/g, ''));
             return Number.isFinite(n) ? n : NaN;
         };
 
-        const rates = {
-            USD: { buy: toNum(ratesSource.USD_in), sell: toNum(ratesSource.USD_out) },
-            EUR: { buy: toNum(ratesSource.EUR_in), sell: toNum(ratesSource.EUR_out) },
-            RUB: { buy: toNum(ratesSource.RUB_in), sell: toNum(ratesSource.RUB_out) },
-            CNY: { buy: toNum(ratesSource.CNY_in), sell: toNum(ratesSource.CNY_out) }
+        // Найдём узел с курсами
+        const ratesNode = findRatesNode(ratesData);
+        if (!ratesNode) {
+            console.error('Не найден узел с курсами в ответе API. Пример ответа (усечённо):', (typeof ratesData === 'string' ? ratesData.slice(0, 1000) : JSON.stringify(ratesData).slice(0, 1000)));
+            if (this.currencyTableBody) this.currencyTableBody.innerHTML = `<tr><td colspan="3">Ошибка формата данных от API.</td></tr>`;
+            this.populateConverterSelects();
+            // подсказка пользователю/разработчику: откройте DevTools -> Console -> найдите "Raw currency data"
+            this.showNotification('Не удалось распознать формат ответа от API. Откройте консоль (F12) и пришлите первый лог "Raw currency data".', 'error');
+            return;
+        }
+
+        // Поддерживаем оба варианта: USD_in/USD_out или USD: { in/out } или USD: { buy/sell }
+        const extractValue = (node, code, dir) => {
+            // dir: 'in' или 'out' или 'buy'/'sell'
+            // Популярные имена:
+            const candidates = [
+                `${code}_in`, `${code}_out`,
+                code, // may be object
+            ];
+            // прямые поля like USD_in
+            if (node[`${code}_in`] !== undefined && node[`${code}_out`] !== undefined) {
+                return { buy: toNum(node[`${code}_in`]), sell: toNum(node[`${code}_out`]) };
+            }
+            // вложенный объект USD: { in, out } или { buy, sell }
+            if (node[code] && typeof node[code] === 'object') {
+                const inner = node[code];
+                const buy = inner.in ?? inner.buy ?? inner.buy_rate ?? inner.rate_in ?? inner.rateBuy ?? inner.purchase;
+                const sell = inner.out ?? inner.sell ?? inner.sell_rate ?? inner.rate_out ?? inner.rateSell ?? inner.sale;
+                return { buy: toNum(buy), sell: toNum(sell) };
+            }
+            // иногда ключи находятся как USD_in и USD_out под другим именем в узле (например, в массиве элементов) — попробуем найти везде в узле
+            const buyKey = Object.keys(node).find(k => new RegExp(`^${code}(_|\\W)?(in|buy|purchase|rate_in)$`, 'i').test(k));
+            const sellKey = Object.keys(node).find(k => new RegExp(`^${code}(_|\\W)?(out|sell|sale|rate_out)$`, 'i').test(k));
+            if (buyKey || sellKey) {
+                return { buy: toNum(buyKey ? node[buyKey] : undefined), sell: toNum(sellKey ? node[sellKey] : undefined) };
+            }
+            // не найдено
+            return { buy: NaN, sell: NaN };
+        };
+
+        const rawRates = {
+            USD: extractValue(ratesNode, 'USD'),
+            EUR: extractValue(ratesNode, 'EUR'),
+            RUB: extractValue(ratesNode, 'RUB'),
+            CNY: extractValue(ratesNode, 'CNY')
         };
 
         const normalized = { BYN: { buy: 1, sell: 1 } };
-        for (const [code, val] of Object.entries(rates)) {
+        for (const [code, val] of Object.entries(rawRates)) {
             if (val && Number.isFinite(val.buy) && Number.isFinite(val.sell)) {
                 normalized[code] = val;
+            } else {
+                console.warn(`Курс для ${code} не найден или не числовой в обнаруженном узле. Значение:`, val);
             }
+        }
+
+        // Если не нашлось ни одной валюы — сообщаем
+        if (Object.keys(normalized).length <= 1) {
+            console.error('В нормализованные курсы ничего полезного не попало:', normalized);
+            if (this.currencyTableBody) this.currencyTableBody.innerHTML = `<tr><td colspan="3">Курсы валют временно недоступны.</td></tr>`;
+            this.populateConverterSelects();
+            this.showNotification('Невозможно распознать курсы валют в ответе API. Проверьте консоль.', 'error');
+            return;
         }
 
         this.exchangeRates = normalized;
@@ -340,18 +468,28 @@ class App {
             if (!response.ok) {
                 throw new Error(`Сетевой ответ не был успешным (${response.status})`);
             }
-            const data = await response.json();
+            // Попробуем получить текст, потому что иногда сервер отдает JSON в тексте или с неверным заголовком
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                // оставляем как строку (processAndDisplayRates попытается распарсить)
+                data = text;
+            }
+            // Кладём примерно для отладки
             localStorage.setItem('currencyRatesCache', JSON.stringify(data));
             this.processAndDisplayRates(data);
         } catch (error) {
             console.warn('⚠️ Не удалось загрузить курсы валют из сети:', error);
-            this.showNotification('Нет соединения. Загружены последние курсы.', 'info');
+            this.showNotification('Нет соединения. Загружены последние курсы (если есть).', 'info');
 
             const cachedData = localStorage.getItem('currencyRatesCache');
             if (cachedData) {
                 try {
                     this.processAndDisplayRates(JSON.parse(cachedData));
                 } catch (e) {
+                    console.error('Ошибка чтения кэша курсов:', e);
                     if (this.currencyTableBody) this.currencyTableBody.innerHTML = `<tr><td colspan="3">Ошибка чтения кэша.</td></tr>`;
                 }
             } else {
@@ -397,6 +535,7 @@ class App {
         }
 
         const getRate = (currency, type) => {
+            if (currency === 'BYN') return 1;
             let rate = this.exchangeRates[currency][type];
             if (currency === 'RUB') return rate / 100;
             if (currency === 'CNY') return rate / 10;
